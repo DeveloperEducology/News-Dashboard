@@ -35,7 +35,7 @@ export default function ArticlesTable() {
   useEffect(() => {
     const fetchInitialFilters = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/articles?limit=200`);
+        const response = await fetch(`https://newsai-8a45.onrender.com/api/articles?limit=200`);
         if (!response.ok) throw new Error("Failed to fetch articles for filters");
         const data = await response.json();
 
@@ -58,7 +58,7 @@ export default function ArticlesTable() {
     setLoading(true);
     setError(null);
     try {
-      let url = `http://localhost:8000/api/articles?page=${currentPage}&limit=10`;
+      let url = `https://newsai-8a45.onrender.com/api/articles?page=${currentPage}&limit=10`;
 
       if (selectedCategory && selectedCategory !== "All") url += `&category=${encodeURIComponent(selectedCategory)}`;
       if (selectedSource && selectedSource !== "All") url += `&source=${encodeURIComponent(selectedSource)}`;
@@ -109,7 +109,7 @@ export default function ArticlesTable() {
   };
   const handleSaveEdit = async () => {
     try {
-      await fetch(`http://localhost:8000/api/articles/${editArticle._id}`, {
+      await fetch(`https://newsai-8a45.onrender.com/api/articles/${editArticle._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editArticle),
@@ -123,7 +123,7 @@ export default function ArticlesTable() {
   const handleDelete = async (articleId) => {
     if (!window.confirm("Are you sure you want to delete this article?")) return;
     try {
-      await fetch(`http://localhost:8000/api/articles/${articleId}`, { method: "DELETE" });
+      await fetch(`https://newsai-8a45.onrender.com/api/articles/${articleId}`, { method: "DELETE" });
       fetchArticles(); // Refetch the list to reflect deletion
     } catch {
       alert("Failed to delete article");
@@ -131,7 +131,7 @@ export default function ArticlesTable() {
   };
   const handleCreate = async () => {
     try {
-      const res = await fetch(`http://localhost:8000/api/articles/manual`, {
+      const res = await fetch(`https://newsai-8a45.onrender.com/api/articles/manual`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newArticle),
@@ -164,7 +164,7 @@ export default function ArticlesTable() {
     const action = newStatus ? "publish" : "unpublish";
     if (!window.confirm(`Are you sure you want to ${action} this article?`)) return;
     try {
-      const response = await fetch(`http://localhost:8000/api/articles/${article._id}`, {
+      const response = await fetch(`https://newsai-8a45.onrender.com/api/articles/${article._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isPublished: newStatus }),

@@ -267,45 +267,153 @@ function Modal({ title, children, onClose, onSave }) {
 }
 
 function FormInputs({ data, setData, isCreateMode = false, categories = [] }) {
+  const [preview, setPreview] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
   const handleImageChange = (e) => {
-    const src = e.target.value;
-    if (isCreateMode) setData({ ...data, imageUrl: src });
-    else setData({ ...data, media: [{ type: "image", src }] });
+    const newSrc = e.target.value;
+    if (isCreateMode) {
+      setData({ ...data, imageUrl: newSrc });
+    } else {
+      setData({ ...data, media: [{ type: "image", src: newSrc }] });
+    }
   };
-  const getImage = () => (isCreateMode ? data.imageUrl || "" : data.media?.[0]?.src || "");
+
+  const getImageUrl = () => {
+    if (isCreateMode) return data.imageUrl || "";
+    return data.media && data.media[0] ? data.media[0].src : "";
+  };
+
+  const handleJsonPaste = (e) => {
+    const text = e.target.value.trim();
+    setError(null);
+    try {
+      // 1. Try parsing as normal JSON
+      const parsed = JSON.parse(text);
+      setData((prev) => ({ ...prev, ...parsed }));
+      setPreview(parsed);
+    } catch {
+      try {
+        // 2. Fallback: parse as "array-like" input
+        const cleaned = text
+          .replace(/^{|}$/g, "") // remove { }
+          .split(/\n|,/)
+          .map((s) => s.trim().replace(/^"|"$/g, "")) // strip quotes
+          .filter(Boolean);
+
+        if (cleaned.length >= 6) {
+          const [title, source, summary, body, url, imageUrl] = cleaned;
+          const mapped = { title, source, summary, body, url, imageUrl, isPublished: true };
+          setData(mapped);
+          setPreview(mapped);
+        } else {
+          setError("Invalid plain format: needs at least 6 values (title, source, summary, body, url, imageUrl).");
+          setPreview(null);
+        }
+      } catch {
+        setError("Invalid JSON or plain input");
+        setPreview(null);
+      }
+    }
+  };
+
   return (
     <>
+      {isCreateMode && (
+        <label className="block mb-3">
+          <span className="text-gray-300 text-sm">Paste JSON / Plain Data</span>
+          <textarea
+            placeholder={`Either valid JSON or:\n{\n "Title",\n "Source",\n "Summary",\n "Body",\n "URL",\n "ImageUrl"\n}`}
+            onChange={handleJsonPaste}
+            className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-900 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500 h-28 resize-y"
+          />
+          {error && (
+            <div className="mt-2 text-sm text-red-400">{error}</div>
+          )}
+          {preview && (
+            <pre className="mt-2 p-2 bg-gray-800 text-xs text-green-300 rounded-lg overflow-x-auto max-h-40">
+              {JSON.stringify(preview, null, 2)}
+            </pre>
+          )}
+        </label>
+      )}
+
       <label className="block mb-3">
         <span className="text-gray-300 text-sm">Title</span>
-        <input value={data.title} onChange={(e) => setData({ ...data, title: e.target.value })} className="mt-1 w-full px-3 py-2 rounded bg-gray-700" />
+        <input
+          type="text"
+          value={data.title}
+          onChange={(e) => setData({ ...data, title: e.target.value })}
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"
+        />
       </label>
+
       <label className="block mb-3">
         <span className="text-gray-300 text-sm">Source</span>
-        <input value={data.source} onChange={(e) => setData({ ...data, source: e.target.value })} className="mt-1 w-full px-3 py-2 rounded bg-gray-700" />
+        <input
+          type="text"
+          value={data.source}
+          onChange={(e) => setData({ ...data, source: e.target.value })}
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"
+        />
       </label>
+
       {!isCreateMode && (
         <label className="block mb-3">
           <span className="text-gray-300 text-sm">Category</span>
-          <select value={data.topCategory || "N/A"} onChange={(e) => setData({ ...data, topCategory: e.target.value === "N/A" ? "" : e.target.value })} className="mt-1 w-full px-3 py-2 rounded bg-gray-700">
-            {categories.filter((c) => c !== "All").map((c) => <option key={c}>{c}</option>)}
+          <select
+            value={data.topCategory || "N/A"}
+            onChange={(e) => {
+              const value = e.target.value === "N/A" ? "" : e.target.value;
+              setData({ ...data, topCategory: value });
+            }}
+            className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"
+          >
+            {categories.filter((c) => c !== "All").map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
           </select>
         </label>
       )}
+
       <label className="block mb-3">
         <span className="text-gray-300 text-sm">URL</span>
-        <input value={data.url || ""} onChange={(e) => setData({ ...data, url: e.target.value })} className="mt-1 w-full px-3 py-2 rounded bg-gray-700" />
+        <input
+          type="text"
+          value={data.url || ""}
+          onChange={(e) => setData({ ...data, url: e.target.value })}
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"
+        />
       </label>
+
       <label className="block mb-3">
         <span className="text-gray-300 text-sm">Image URL</span>
-        <input value={getImage()} onChange={handleImageChange} className="mt-1 w-full px-3 py-2 rounded bg-gray-700" />
+        <input
+          type="text"
+          value={getImageUrl()}
+          onChange={handleImageChange}
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"
+        />
       </label>
+
       <label className="block mb-3">
         <span className="text-gray-300 text-sm">Summary</span>
-        <textarea value={data.summary || ""} onChange={(e) => setData({ ...data, summary: e.target.value })} className="mt-1 w-full px-3 py-2 rounded bg-gray-700 h-24" />
+        <textarea
+          value={data.summary || ""}
+          onChange={(e) => setData({ ...data, summary: e.target.value })}
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500 h-24 resize-y"
+        />
       </label>
+
       <label className="block mb-3">
         <span className="text-gray-300 text-sm">Body</span>
-        <textarea value={data.body || ""} onChange={(e) => setData({ ...data, body: e.target.value })} className="mt-1 w-full px-3 py-2 rounded bg-gray-700 h-40" />
+        <textarea
+          value={data.body || ""}
+          onChange={(e) => setData({ ...data, body: e.target.value })}
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500 h-40 resize-y"
+        />
       </label>
     </>
   );

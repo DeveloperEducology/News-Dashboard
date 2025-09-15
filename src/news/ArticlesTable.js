@@ -35,11 +35,16 @@ export default function ArticlesTable() {
   useEffect(() => {
     const fetchInitialFilters = async () => {
       try {
-        const response = await fetch(`https://newsai-8a45.onrender.com/api/articles?limit=200`);
-        if (!response.ok) throw new Error("Failed to fetch articles for filters");
+        const response = await fetch(
+          `http://localhost:5000/api/saved-tweets?limit=200`
+        );
+        if (!response.ok)
+          throw new Error("Failed to fetch articles for filters");
         const data = await response.json();
 
-        const allCategories = data.articles.map((a) => a.topCategory).filter(Boolean);
+        const allCategories = data.articles
+          .map((a) => a.topCategory)
+          .filter(Boolean);
         const uniqueCategories = [...new Set(allCategories)].sort();
         setCategories(["All", ...uniqueCategories, "N/A"]);
 
@@ -58,14 +63,17 @@ export default function ArticlesTable() {
     setLoading(true);
     setError(null);
     try {
-      let url = `https://newsai-8a45.onrender.com/api/articles?page=${currentPage}&limit=10`;
+      let url = `http://localhost:5000/api/articles?page=${currentPage}&limit=10`;
 
-      if (selectedCategory && selectedCategory !== "All") url += `&category=${encodeURIComponent(selectedCategory)}`;
-      if (selectedSource && selectedSource !== "All") url += `&source=${encodeURIComponent(selectedSource)}`;
+      if (selectedCategory && selectedCategory !== "All")
+        url += `&category=${encodeURIComponent(selectedCategory)}`;
+      if (selectedSource && selectedSource !== "All")
+        url += `&source=${encodeURIComponent(selectedSource)}`;
       if (filterType && filterType !== "All") url += `&type=${filterType}`;
 
       const response = await fetch(url);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
       setArticles(data.articles);
@@ -109,7 +117,7 @@ export default function ArticlesTable() {
   };
   const handleSaveEdit = async () => {
     try {
-      await fetch(`https://newsai-8a45.onrender.com/api/articles/${editArticle._id}`, {
+      await fetch(`http://localhost:5000/api/articles/${editArticle._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editArticle),
@@ -121,9 +129,12 @@ export default function ArticlesTable() {
     }
   };
   const handleDelete = async (articleId) => {
-    if (!window.confirm("Are you sure you want to delete this article?")) return;
+    if (!window.confirm("Are you sure you want to delete this article?"))
+      return;
     try {
-      await fetch(`https://newsai-8a45.onrender.com/api/articles/${articleId}`, { method: "DELETE" });
+      await fetch(`http://localhost:5000/api/articles/${articleId}`, {
+        method: "DELETE",
+      });
       fetchArticles(); // Refetch the list to reflect deletion
     } catch {
       alert("Failed to delete article");
@@ -131,7 +142,7 @@ export default function ArticlesTable() {
   };
   const handleCreate = async () => {
     try {
-      const res = await fetch(`https://newsai-8a45.onrender.com/api/articles/manual`, {
+      const res = await fetch(`http://localhost:5000/api/articles/manual`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newArticle),
@@ -162,19 +173,28 @@ export default function ArticlesTable() {
   const handlePublish = async (article) => {
     const newStatus = !article.isPublished;
     const action = newStatus ? "publish" : "unpublish";
-    if (!window.confirm(`Are you sure you want to ${action} this article?`)) return;
+    if (!window.confirm(`Are you sure you want to ${action} this article?`))
+      return;
     try {
-      const response = await fetch(`https://newsai-8a45.onrender.com/api/articles/${article._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isPublished: newStatus }),
-      });
+      const response = await fetch(
+        `http://localhost:5000/api/articles/${article._id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isPublished: newStatus }),
+        }
+      );
       if (!response.ok) throw new Error(`Failed to ${action} the article.`);
       setArticles((prev) =>
-        prev.map((a) => (a._id === article._id ? { ...a, isPublished: newStatus } : a))
+        prev.map((a) =>
+          a._id === article._id ? { ...a, isPublished: newStatus } : a
+        )
       );
     } catch (err) {
-      alert(err.message || `An error occurred while trying to ${action} the article.`);
+      alert(
+        err.message ||
+          `An error occurred while trying to ${action} the article.`
+      );
     }
   };
 
@@ -226,6 +246,7 @@ export default function ArticlesTable() {
             >
               <option value="All">All Types</option>
               <option value="Manual">Manual Posts</option>
+              <option value="twiter">Twitter Posts</option>
               <option value="Fetched">Fetched Articles</option>
             </select>
             <select
@@ -384,7 +405,11 @@ export default function ArticlesTable() {
             onClose={() => setIsModalOpen(false)}
             onSave={handleSaveEdit}
           >
-            <FormInputs data={editArticle} setData={setEditArticle} categories={categories} />
+            <FormInputs
+              data={editArticle}
+              setData={setEditArticle}
+              categories={categories}
+            />
           </Modal>
         )}
         {isCreateOpen && (
@@ -393,7 +418,11 @@ export default function ArticlesTable() {
             onClose={() => setIsCreateOpen(false)}
             onSave={handleCreate}
           >
-            <FormInputs data={newArticle} setData={setNewArticle} isCreateMode />
+            <FormInputs
+              data={newArticle}
+              setData={setNewArticle}
+              isCreateMode
+            />
           </Modal>
         )}
       </div>
@@ -433,6 +462,9 @@ function Modal({ title, children, onClose, onSave }) {
 }
 
 function FormInputs({ data, setData, isCreateMode = false, categories = [] }) {
+  const [preview, setPreview] = React.useState(null);
+  const [error, setError] = React.useState(null);
+
   const handleImageChange = (e) => {
     const newSrc = e.target.value;
     if (isCreateMode) {
@@ -441,15 +473,94 @@ function FormInputs({ data, setData, isCreateMode = false, categories = [] }) {
       setData({ ...data, media: [{ type: "image", src: newSrc }] });
     }
   };
+
   const getImageUrl = () => {
     if (isCreateMode) return data.imageUrl || "";
     return data.media && data.media[0] ? data.media[0].src : "";
   };
+
+  const handleJsonPaste = (e) => {
+    const text = e.target.value.trim();
+    setError(null);
+    try {
+      // 1. Try parsing as normal JSON
+      const parsed = JSON.parse(text);
+      setData((prev) => ({ ...prev, ...parsed }));
+      setPreview(parsed);
+    } catch {
+      try {
+        // 2. Fallback: parse as "array-like" input
+        const cleaned = text
+          .replace(/^{|}$/g, "") // remove { }
+          .split(/\n|,/)
+          .map((s) => s.trim().replace(/^"|"$/g, "")) // strip quotes
+          .filter(Boolean);
+
+        if (cleaned.length >= 6) {
+          const [title, source, summary, body, url, imageUrl] = cleaned;
+          const mapped = {
+            title,
+            source,
+            summary,
+            body,
+            url,
+            imageUrl,
+            isPublished: true,
+          };
+          setData(mapped);
+          setPreview(mapped);
+        } else {
+          setError(
+            "Invalid plain format: needs at least 6 values (title, source, summary, body, url, imageUrl)."
+          );
+          setPreview(null);
+        }
+      } catch {
+        setError("Invalid JSON or plain input");
+        setPreview(null);
+      }
+    }
+  };
+
   return (
     <>
-      <label className="block mb-3"> <span className="text-gray-300 text-sm">Title</span> <input type="text" value={data.title} onChange={(e) => setData({ ...data, title: e.target.value })} className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"/> </label>
-      <label className="block mb-3"> <span className="text-gray-300 text-sm">Source</span> <input type="text" value={data.source} onChange={(e) => setData({ ...data, source: e.target.value })} className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"/> </label>
-      
+      {isCreateMode && (
+        <label className="block mb-3">
+          <span className="text-gray-300 text-sm">Paste JSON / Plain Data</span>
+          <textarea
+            placeholder={`Either valid JSON or:\n{\n "Title",\n "Source",\n "Summary",\n "Body",\n "URL",\n "ImageUrl"\n}`}
+            onChange={handleJsonPaste}
+            className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-900 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500 h-28 resize-y"
+          />
+          {error && <div className="mt-2 text-sm text-red-400">{error}</div>}
+          {preview && (
+            <pre className="mt-2 p-2 bg-gray-800 text-xs text-green-300 rounded-lg overflow-x-auto max-h-40">
+              {JSON.stringify(preview, null, 2)}
+            </pre>
+          )}
+        </label>
+      )}
+
+      <label className="block mb-3">
+        <span className="text-gray-300 text-sm">Title</span>
+        <input
+          type="text"
+          value={data.title}
+          onChange={(e) => setData({ ...data, title: e.target.value })}
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"
+        />
+      </label>
+
+      <label className="block mb-3">
+        <span className="text-gray-300 text-sm">Source</span>
+        <input
+          type="text"
+          value={data.source}
+          onChange={(e) => setData({ ...data, source: e.target.value })}
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"
+        />
+      </label>
+
       {!isCreateMode && (
         <label className="block mb-3">
           <span className="text-gray-300 text-sm">Category</span>
@@ -461,17 +572,54 @@ function FormInputs({ data, setData, isCreateMode = false, categories = [] }) {
             }}
             className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"
           >
-            {categories.filter(c => c !== "All").map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
+            {categories
+              .filter((c) => c !== "All")
+              .map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
           </select>
         </label>
       )}
 
-      <label className="block mb-3"> <span className="text-gray-300 text-sm">URL</span> <input type="text" value={data.url || ""} onChange={(e) => setData({ ...data, url: e.target.value })} className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"/> </label>
-      <label className="block mb-3"> <span className="text-gray-300 text-sm">Image URL</span> <input type="text" value={getImageUrl()} onChange={handleImageChange} className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"/> </label>
-      <label className="block mb-3"> <span className="text-gray-300 text-sm">Summary</span> <textarea value={data.summary || ""} onChange={(e) => setData({ ...data, summary: e.target.value })} className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500 h-24 resize-y"/> </label>
-      <label className="block mb-3"> <span className="text-gray-300 text-sm">Body</span> <textarea value={data.body || ""} onChange={(e) => setData({ ...data, body: e.target.value })} className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500 h-40 resize-y"/> </label>
+      <label className="block mb-3">
+        <span className="text-gray-300 text-sm">URL</span>
+        <input
+          type="text"
+          value={data.url || ""}
+          onChange={(e) => setData({ ...data, url: e.target.value })}
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"
+        />
+      </label>
+
+      <label className="block mb-3">
+        <span className="text-gray-300 text-sm">Image URL</span>
+        <input
+          type="text"
+          value={getImageUrl()}
+          onChange={handleImageChange}
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500"
+        />
+      </label>
+
+      <label className="block mb-3">
+        <span className="text-gray-300 text-sm">Summary</span>
+        <textarea
+          value={data.summary || ""}
+          onChange={(e) => setData({ ...data, summary: e.target.value })}
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500 h-24 resize-y"
+        />
+      </label>
+
+      <label className="block mb-3">
+        <span className="text-gray-300 text-sm">Body</span>
+        <textarea
+          value={data.body || ""}
+          onChange={(e) => setData({ ...data, body: e.target.value })}
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-cyan-500 h-40 resize-y"
+        />
+      </label>
     </>
   );
 }

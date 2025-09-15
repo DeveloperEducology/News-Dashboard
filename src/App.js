@@ -3,6 +3,8 @@ import NewsPage from "./news/NewsPage";
 import ListNews from "./news/ListNews";
 import ArticlesTable from "./news/ArticlesTable";
 import NewDashboard from "./news/NewDashboard";
+import EmbedSocialPage from "./news/EmbedPage";
+import TwitterNodeList from "./news/TwitterNodeList";
 
 function App() {
   return (
@@ -11,6 +13,8 @@ function App() {
       
       <Route path="/news" element={<NewsPage />} />
       <Route path="/news-dashboard" element={<NewDashboard />} />
+      <Route path="/embed" element={<EmbedSocialPage />} />
+      <Route path="/twi" element={<TwitterNodeList />} />
             
       <Route path="/news/list" element={<ListNews />} />
       <Route path="/ArticlesTable" element={<ArticlesTable />} />

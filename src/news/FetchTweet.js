@@ -11,11 +11,11 @@ const ALL_CATEGORIES = [
 ];
 
 // Main App Component
-export default function App() {
+export default function FetchTweet() {
   // State variables to manage input, data, loading, and errors
-  const [tweetId, setTweetId] = useState(''); // Default ID
-  const [type, setType] = useState(''); // Default type
-  const [categories, setCategories] = useState(['Sports']); // Now an array
+  const [tweetId, setTweetId] = useState('1966174656316268791'); // Default working ID
+  const [type, setType] = useState('normal_post'); // Default type
+  const [selectedCategories, setSelectedCategories] = useState(['Sports', 'National']); // Now an array
   const [tweetData, setTweetData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -23,7 +23,7 @@ export default function App() {
   // --- Handler for checkbox changes ---
   const handleCategoryChange = (event) => {
     const { value, checked } = event.target;
-    setCategories(prev => {
+    setSelectedCategories(prev => {
       // If the checkbox is checked, add the category to the array
       if (checked) {
         return [...prev, value];
@@ -38,7 +38,7 @@ export default function App() {
   // --- API Fetch Function ---
   const fetchTweet = async () => {
     // Updated validation for the array
-    if (!tweetId || !type || categories.length === 0) {
+    if (!tweetId || !type || selectedCategories.length === 0) {
       setError('Please enter a Tweet ID, select a type, and at least one category.');
       return;
     }
@@ -49,8 +49,10 @@ export default function App() {
     setTweetData(null);
 
     // Join the array into a comma-separated string for the API
-    const categoriesQueryParam = categories.join(',');
-    const apiUrl = `https://twitterapi-7313.onrender.com/api/formatted-tweet/?id=${tweetId}&type=${type}&categories=${categoriesQueryParam}`;
+    const categoriesQueryParam = selectedCategories.join(',');
+    
+    // --- THIS IS THE CORRECTED LINE ---
+    const apiUrl = `https://twitterapi-7313.onrender.com/api/formatted-tweet/${tweetId}?type=${type}&categories=${categoriesQueryParam}`;
 
     try {
       const response = await fetch(apiUrl);
@@ -90,7 +92,7 @@ export default function App() {
                 type="text"
                 value={tweetId}
                 onChange={(e) => setTweetId(e.target.value)}
-                placeholder="e.g., 1788812443868614917"
+                placeholder="e.g., 1966174656316268791"
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition duration-200"
               />
             </div>
@@ -103,7 +105,7 @@ export default function App() {
                     <input
                       type="checkbox"
                       value={category}
-                      checked={categories.includes(category)}
+                      checked={selectedCategories.includes(category)}
                       onChange={handleCategoryChange}
                       className="form-checkbox h-4 w-4 rounded bg-gray-600 border-gray-500 text-cyan-600 focus:ring-cyan-500"
                     />
@@ -170,4 +172,3 @@ export default function App() {
     </div>
   );
 }
-

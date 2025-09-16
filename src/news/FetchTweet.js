@@ -1,20 +1,45 @@
 import React, { useState } from 'react';
 
+// A constant array of all available categories
+const ALL_CATEGORIES = [
+  "Sports",
+  "Entertainment",
+  "Politics",
+  "National",
+  "International",
+  "Telangana"
+];
+
 // Main App Component
-export default function FetchTweet() {
+export default function App() {
   // State variables to manage input, data, loading, and errors
   const [tweetId, setTweetId] = useState(''); // Default ID
-  const [type, setType] = useState('full_post'); // Default type
-  const [category, setCategory] = useState('Sports'); // Default category
+  const [type, setType] = useState(''); // Default type
+  const [categories, setCategories] = useState(['Sports']); // Now an array
   const [tweetData, setTweetData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // --- Handler for checkbox changes ---
+  const handleCategoryChange = (event) => {
+    const { value, checked } = event.target;
+    setCategories(prev => {
+      // If the checkbox is checked, add the category to the array
+      if (checked) {
+        return [...prev, value];
+      }
+      // If unchecked, remove the category from the array
+      else {
+        return prev.filter(cat => cat !== value);
+      }
+    });
+  };
+
   // --- API Fetch Function ---
   const fetchTweet = async () => {
-    // Basic validation to ensure ID and category are selected
-    if (!tweetId || !type || !category) {
-      setError('Please fill all fields.');
+    // Updated validation for the array
+    if (!tweetId || !type || categories.length === 0) {
+      setError('Please enter a Tweet ID, select a type, and at least one category.');
       return;
     }
 
@@ -23,13 +48,13 @@ export default function FetchTweet() {
     setError(null);
     setTweetData(null);
 
-    // Construct the API URL
-    const apiUrl = `https://twitterapi-7313.onrender.com/api/formatted-tweet/?id=${tweetId}&type=${type}&category=${category}`;
+    // Join the array into a comma-separated string for the API
+    const categoriesQueryParam = categories.join(',');
+    const apiUrl = `https://twitterapi-7313.onrender.com/api/formatted-tweet/?id=${tweetId}&type=${type}&categories=${categoriesQueryParam}`;
 
     try {
       const response = await fetch(apiUrl);
 
-      // Check for non-2xx HTTP responses
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
       }
@@ -38,11 +63,9 @@ export default function FetchTweet() {
       setTweetData(data);
 
     } catch (err) {
-      // Handle fetch errors (network issues, API errors, etc.)
-      setError(`Failed to fetch data. Please check the console for more details or try again. Error: ${err.message}`);
+      setError(`Failed to fetch data. Please check the console for more details. Error: ${err.message}`);
       console.error("Fetch Error:", err);
     } finally {
-      // Stop loading indicator
       setIsLoading(false);
     }
   };
@@ -59,8 +82,8 @@ export default function FetchTweet() {
           </div>
 
           {/* Input Form */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div className="sm:col-span-3">
+          <div className="space-y-6">
+            <div>
               <label htmlFor="tweetId" className="block text-sm font-medium text-gray-300 mb-2">Tweet ID</label>
               <input
                 id="tweetId"
@@ -71,29 +94,32 @@ export default function FetchTweet() {
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition duration-200"
               />
             </div>
-            <div className="sm:col-span-2">
-              <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-2">Category</label>
-              <select
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition duration-200 h-[42px]"
-              >
-                <option value="Sports">Sports</option>
-                <option value="Entertainment">Entertainment</option>
-                <option value="Politics">Politics</option>
-                <option value="National">National</option>
-                <option value="International">International</option>
-                <option value="Telangana">Telangana</option>
-              </select>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Categories (Select one or more)</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                {ALL_CATEGORIES.map((category) => (
+                  <label key={category} className="flex items-center space-x-2 cursor-pointer text-gray-200 hover:text-cyan-400 transition-colors">
+                    <input
+                      type="checkbox"
+                      value={category}
+                      checked={categories.includes(category)}
+                      onChange={handleCategoryChange}
+                      className="form-checkbox h-4 w-4 rounded bg-gray-600 border-gray-500 text-cyan-600 focus:ring-cyan-500"
+                    />
+                    <span>{category}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-             <div>
+
+            <div>
               <label htmlFor="type" className="block text-sm font-medium text-gray-300 mb-2">Type</label>
               <select
                 id="type"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition duration-200 h-[42px]"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition duration-200"
               >
                 <option value="full_post">Full Post</option>
                 <option value="normal_post">Normal Post</option>
@@ -102,7 +128,7 @@ export default function FetchTweet() {
           </div>
 
           {/* Action Button */}
-          <div className="text-center">
+          <div className="text-center mt-8">
             <button
               onClick={fetchTweet}
               disabled={isLoading}

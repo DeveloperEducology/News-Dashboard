@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 // Main App Component
-export default function App() {
+export default function FetchTweet() {
   // State variables to manage input, data, loading, and errors
   const [tweetId, setTweetId] = useState(''); // Default ID
   const [type, setType] = useState('full_post'); // Default type

@@ -16,7 +16,8 @@ function App() {
       <Route path="/news-dashboard" element={<NewDashboard />} />
       <Route path="/embed" element={<EmbedSocialPage />} />
       <Route path="/twi" element={<TwitterNodeList />} />
-  <Route path="/fetch-tweet" element={<FetchTweet />} />
+      <Route path="/ft" element={<FetchTweet />} />
+            
       <Route path="/news/list" element={<ListNews />} />
       <Route path="/ArticlesTable" element={<ArticlesTable />} />
 

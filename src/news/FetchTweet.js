@@ -13,49 +13,52 @@ const ALL_CATEGORIES = [
 // Main App Component
 export default function FetchTweet() {
   // State variables to manage input, data, loading, and errors
-  const [tweetId, setTweetId] = useState('1966174656316268791'); // Default working ID
-  const [type, setType] = useState('normal_post'); // Default type
-  const [selectedCategories, setSelectedCategories] = useState(['Sports', 'National']); // Now an array
+  const [tweetId, setTweetId] = useState('1966174656316268791');
+  const [type, setType] = useState('normal_post');
+  const [selectedCategories, setSelectedCategories] = useState(['Sports', 'National']);
   const [tweetData, setTweetData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // --- Handler for checkbox changes ---
   const handleCategoryChange = (event) => {
     const { value, checked } = event.target;
     setSelectedCategories(prev => {
-      // If the checkbox is checked, add the category to the array
       if (checked) {
         return [...prev, value];
-      }
-      // If unchecked, remove the category from the array
-      else {
+      } else {
         return prev.filter(cat => cat !== value);
       }
     });
   };
 
-  // --- API Fetch Function ---
+  // >>> UPDATED: This function now uses the POST method
   const fetchTweet = async () => {
-    // Updated validation for the array
     if (!tweetId || !type || selectedCategories.length === 0) {
       setError('Please enter a Tweet ID, select a type, and at least one category.');
       return;
     }
 
-    // Reset state before new fetch
     setIsLoading(true);
     setError(null);
     setTweetData(null);
 
-    // Join the array into a comma-separated string for the API
-    const categoriesQueryParam = selectedCategories.join(',');
-    
-    // --- THIS IS THE CORRECTED LINE ---
-    const apiUrl = `https://twitterapi-7313.onrender.com/api/formatted-tweet/${tweetId}?type=${type}&categories=${categoriesQueryParam}`;
+    // The URL is now fixed and does not contain any query parameters
+    const apiUrl = 'https://twitterapi-7313.onrender.com/api/formatted-tweet';
 
     try {
-      const response = await fetch(apiUrl);
+      // The fetch call is now configured for a POST request
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json', // Tell the server we're sending JSON
+        },
+        // Send the data in the request body
+        body: JSON.stringify({
+          tweet_ids: [tweetId], // The server expects an array of IDs
+          categories: selectedCategories,
+          type: type,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
@@ -65,14 +68,14 @@ export default function FetchTweet() {
       setTweetData(data);
 
     } catch (err) {
-      setError(`Failed to fetch data. Please check the console for more details. Error: ${err.message}`);
+      setError(`Failed to fetch data. Error: ${err.message}`);
       console.error("Fetch Error:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- Render JSX ---
+  // --- Render JSX (No changes needed below this line) ---
   return (
     <div className="bg-gray-900 text-white min-h-screen font-sans flex items-center justify-center p-4">
       <div className="w-full max-w-3xl">

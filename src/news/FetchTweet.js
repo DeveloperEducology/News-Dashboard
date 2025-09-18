@@ -44,7 +44,7 @@ export default function FetchTweet() {
     setIsLoading(true);
     setError(null);
     setTweetData(null);
-const apiUrl = 'https://twitterapi-7313.onrender.com/api/formatted-tweet';
+const apiUrl = 'https://twitterapi-node.onrender.com/api/formatted-tweet';
     // const apiUrl = 'http://localhost:4000/api/formatted-tweet';
 
     // 👉 log request payload before API call

@@ -13,9 +13,9 @@ const ALL_CATEGORIES = [
 // Main App Component
 export default function FetchTweet() {
   // State variables to manage input, data, loading, and errors
-  const [tweetId, setTweetId] = useState('1966174656316268791');
+  const [tweetId, setTweetId] = useState([]);
   const [type, setType] = useState('normal_post');
-  const [selectedCategories, setSelectedCategories] = useState(['Sports', 'National']);
+  const [selectedCategories, setSelectedCategories] = useState([]);
   const [tweetData, setTweetData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -31,8 +31,11 @@ export default function FetchTweet() {
     });
   };
 
+
+  console.log(type, tweetData, tweetId)
+
   // >>> UPDATED: This function now uses the POST method
-  const fetchTweet = async () => {
+   const fetchTweet = async () => {
     if (!tweetId || !type || selectedCategories.length === 0) {
       setError('Please enter a Tweet ID, select a type, and at least one category.');
       return;
@@ -41,23 +44,24 @@ export default function FetchTweet() {
     setIsLoading(true);
     setError(null);
     setTweetData(null);
+const apiUrl = 'https://twitterapi-7313.onrender.com/api/formatted-tweet';
+    // const apiUrl = 'http://localhost:4000/api/formatted-tweet';
 
-    // The URL is now fixed and does not contain any query parameters
-    const apiUrl = 'https://twitterapi-7313.onrender.com/api/formatted-tweet';
+    // 👉 log request payload before API call
+    const requestPayload = {
+      tweet_ids: [tweetId],
+      categories: selectedCategories,
+      type: type,
+    };
+    console.log("📤 Sending payload:", requestPayload);
 
     try {
-      // The fetch call is now configured for a POST request
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json', // Tell the server we're sending JSON
+          'Content-Type': 'application/json',
         },
-        // Send the data in the request body
-        body: JSON.stringify({
-          tweet_ids: [tweetId], // The server expects an array of IDs
-          categories: selectedCategories,
-          type: type,
-        }),
+        body: JSON.stringify(requestPayload),
       });
 
       if (!response.ok) {
@@ -65,15 +69,19 @@ export default function FetchTweet() {
       }
 
       const data = await response.json();
-      setTweetData(data);
 
+      // 👉 log response after API call
+      console.log("📥 API Response:", data);
+
+      setTweetData(data);
     } catch (err) {
       setError(`Failed to fetch data. Error: ${err.message}`);
-      console.error("Fetch Error:", err);
+      console.error("❌ Fetch Error:", err);
     } finally {
       setIsLoading(false);
     }
   };
+
 
   // --- Render JSX (No changes needed below this line) ---
   return (

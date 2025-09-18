@@ -48,7 +48,7 @@ function AdminDashboard() {
     setLoading(true);
     try {
       const res = await fetch(
-        `https://twitterapi-7313.onrender.com/api/saved-tweets?page=${pageNum}&limit=${limit}`
+        `https://twitterapi-node.onrender.com/api/saved-tweets?page=${pageNum}&limit=${limit}`
       );
       const data = await res.json();
       setPosts(data.posts || []);
@@ -68,7 +68,7 @@ function AdminDashboard() {
     if (!window.confirm("Are you sure you want to delete this post?")) return;
     try {
       const res = await fetch(
-        `https://twitterapi-7313.onrender.com/api/saved-tweets/${id}`,
+        `https://twitterapi-node.onrender.com/api/saved-tweets/${id}`,
         {
           method: "DELETE",
         }
@@ -84,8 +84,8 @@ function AdminDashboard() {
     if (!formData) return;
 
     const url = editingPost
-      ? `https://twitterapi-7313.onrender.com/api/saved-tweets/${editingPost._id}`
-      : `https://twitterapi-7313.onrender.com/api/saved-tweets/`;
+      ? `https://twitterapi-node.onrender.com/api/saved-tweets/${editingPost._id}`
+      : `https://twitterapi-node.onrender.com/api/saved-tweets/`;
 
     try {
       const res = await fetch(url, {
@@ -116,7 +116,7 @@ function AdminDashboard() {
 
   const handlePublish = async (id, currentStatus) => {
     try {
-      const res = await fetch(`https://twitterapi-7313.onrender.com/api/saved-tweets/${id}`, {
+      const res = await fetch(`https://twitterapi-node.onrender.com/api/saved-tweets/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isPublished: !currentStatus }),

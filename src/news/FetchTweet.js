@@ -13,12 +13,31 @@ const ALL_CATEGORIES = [
 // Main App Component
 export default function FetchTweet() {
   // State variables to manage input, data, loading, and errors
-  const [tweetId, setTweetId] = useState([]);
+  // >>> UPDATED: Initialized tweetId as a string, not an array.
+  const [tweetId, setTweetId] = useState('');
   const [type, setType] = useState('normal_post');
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [tweetData, setTweetData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // --- NEW: Function to handle input changes and extract Tweet ID from URL ---
+  const handleInputChange = (event) => {
+    const value = event.target.value;
+
+    // Regex to find the tweet ID from a twitter.com or x.com URL
+    // It looks for a sequence of digits after "/status/"
+    const regex = /(?:twitter\.com|x\.com)\/[a-zA-Z0-9_]+\/status\/(\d+)/;
+    const match = value.match(regex);
+
+    if (match && match[1]) {
+      // If a URL is pasted and an ID is found, update the state with the extracted ID.
+      setTweetId(match[1]);
+    } else {
+      // Otherwise, use the input value as is (for manual ID entry).
+      setTweetId(value);
+    }
+  };
 
   const handleCategoryChange = (event) => {
     const { value, checked } = event.target;
@@ -31,11 +50,7 @@ export default function FetchTweet() {
     });
   };
 
-
-  console.log(type, tweetData, tweetId)
-
-  // >>> UPDATED: This function now uses the POST method
-   const fetchTweet = async () => {
+  const fetchTweet = async () => {
     if (!tweetId || !type || selectedCategories.length === 0) {
       setError('Please enter a Tweet ID, select a type, and at least one category.');
       return;
@@ -44,12 +59,11 @@ export default function FetchTweet() {
     setIsLoading(true);
     setError(null);
     setTweetData(null);
-const apiUrl = 'https://twitterapi-node.onrender.com/api/formatted-tweet';
+    const apiUrl = 'https://twitterapi-node.onrender.com/api/formatted-tweet';
     // const apiUrl = 'http://localhost:4000/api/formatted-tweet';
 
-    // 👉 log request payload before API call
     const requestPayload = {
-      tweet_ids: [tweetId],
+      tweet_ids: [tweetId], // The API expects an array, so we wrap the string ID here
       categories: selectedCategories,
       type: type,
     };
@@ -69,10 +83,7 @@ const apiUrl = 'https://twitterapi-node.onrender.com/api/formatted-tweet';
       }
 
       const data = await response.json();
-
-      // 👉 log response after API call
       console.log("📥 API Response:", data);
-
       setTweetData(data);
     } catch (err) {
       setError(`Failed to fetch data. Error: ${err.message}`);
@@ -82,8 +93,7 @@ const apiUrl = 'https://twitterapi-node.onrender.com/api/formatted-tweet';
     }
   };
 
-
-  // --- Render JSX (No changes needed below this line) ---
+  // --- Render JSX ---
   return (
     <div className="bg-gray-900 text-white min-h-screen font-sans flex items-center justify-center p-4">
       <div className="w-full max-w-3xl">
@@ -91,19 +101,21 @@ const apiUrl = 'https://twitterapi-node.onrender.com/api/formatted-tweet';
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl sm:text-4xl font-bold text-cyan-400">Tweet Data Fetcher</h1>
-            <p className="text-gray-400 mt-2">Enter a Tweet ID to preview the formatted JSON response.</p>
+            <p className="text-gray-400 mt-2">Enter a Tweet ID or paste a URL to preview the formatted JSON response.</p>
           </div>
 
           {/* Input Form */}
           <div className="space-y-6">
             <div>
-              <label htmlFor="tweetId" className="block text-sm font-medium text-gray-300 mb-2">Tweet ID</label>
+              <label htmlFor="tweetId" className="block text-sm font-medium text-gray-300 mb-2">Tweet ID or URL</label>
               <input
                 id="tweetId"
                 type="text"
                 value={tweetId}
-                onChange={(e) => setTweetId(e.target.value)}
-                placeholder="e.g., 1966174656316268791"
+                // >>> UPDATED: Using the new handler function
+                onChange={handleInputChange}
+                // >>> UPDATED: Improved placeholder text
+                placeholder="e.g., 1968713335798390839 or paste a full URL"
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition duration-200"
               />
             </div>

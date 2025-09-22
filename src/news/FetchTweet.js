@@ -32,31 +32,44 @@ const FormField = ({ path, fieldKey, fieldValue, onFieldChange, onItemRemove }) 
         return (
             <div className="mt-4 pt-4 border-t border-gray-700">
                 <h4 className="text-md font-semibold text-cyan-400 capitalize mb-2">{fieldKey.replace(/_/g, ' ')}</h4>
-                {fieldValue.map((item, index) => (
-                    <div key={index} className="relative bg-gray-700/50 p-4 rounded-lg mb-4 border border-gray-600">
-                        <button
-                            type="button"
-                            onClick={() => onItemRemove(currentPath, index)}
-                            title="Remove this media item"
-                            className="absolute top-3 right-3 p-1 rounded-full text-gray-400 hover:bg-red-500 hover:text-white transition-colors duration-200"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                        {/* Recursively render fields for the object inside the array */}
-                        {Object.entries(item).map(([key, value]) => (
-                            <FormField
-                                key={key}
-                                path={[...currentPath, index]} // Path now includes the array index
-                                fieldKey={key}
-                                fieldValue={value}
-                                onFieldChange={onFieldChange}
-                                onItemRemove={onItemRemove}
-                            />
-                        ))}
-                    </div>
-                ))}
+                {fieldValue.map((item, index) => {
+                    // If the item in the array is an object, render its fields.
+                    // Otherwise, render a single input for the primitive value (like a string in the categories array).
+                    const isObjectItem = typeof item === 'object' && item !== null;
+                    return (
+                        <div key={index} className="relative bg-gray-700/50 p-4 rounded-lg mb-4 border border-gray-600">
+                            <button
+                                type="button"
+                                onClick={() => onItemRemove(currentPath, index)}
+                                title={`Remove this ${fieldKey.slice(0, -1)}`}
+                                className="absolute top-3 right-3 p-1 rounded-full text-gray-400 hover:bg-red-500 hover:text-white transition-colors duration-200"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+                            {isObjectItem ? (
+                                Object.entries(item).map(([key, value]) => (
+                                    <FormField
+                                        key={key}
+                                        path={[...currentPath, index]} // Path now includes the array index
+                                        fieldKey={key}
+                                        fieldValue={value}
+                                        onFieldChange={onFieldChange}
+                                        onItemRemove={onItemRemove}
+                                    />
+                                ))
+                            ) : (
+                                <input
+                                    type="text"
+                                    value={item}
+                                    onChange={(e) => onFieldChange([...currentPath, index], e.target.value)}
+                                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition duration-200"
+                                />
+                            )}
+                        </div>
+                    )
+                })}
             </div>
         );
     }
@@ -118,7 +131,6 @@ const TweetEditForm = ({ tweetData, setTweetData, onSave, isSaving, onReset }) =
         });
     }, [setTweetData]);
 
-    // --- NEW: Handler to remove an item from an array in the state ---
     const handleItemRemove = useCallback((path, indexToRemove) => {
         setTweetData(currentData => {
             const newData = JSON.parse(JSON.stringify(currentData));
@@ -153,7 +165,7 @@ const TweetEditForm = ({ tweetData, setTweetData, onSave, isSaving, onReset }) =
                         fieldKey={key}
                         fieldValue={value}
                         onFieldChange={handleFieldChange}
-                        onItemRemove={handleItemRemove} // Pass the new handler down
+                        onItemRemove={handleItemRemove}
                     />
                 ))}
                 <div className="text-center mt-8">
@@ -176,7 +188,7 @@ export default function FetchTweetApp() {
     const [type, setType] = useState('normal_post');
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [tweetData, setTweetData] = useState(null);
-    const [originalTweetData, setOriginalTweetData] = useState(null); // <-- NEW: State for "before" data
+    const [originalTweetData, setOriginalTweetData] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -198,7 +210,7 @@ export default function FetchTweetApp() {
 
     const handleReset = () => {
         setTweetData(null);
-        setOriginalTweetData(null); // Reset original data
+        setOriginalTweetData(null);
         setTweetId('');
         setSelectedCategories([]);
         setError(null);
@@ -233,7 +245,7 @@ export default function FetchTweetApp() {
 
             let data = await response.json();
 
-            // --- MODIFIED: Process media array to remove 'variants' ---
+            // --- FIX 1: Remove 'variants' from media array ---
             if (data.media && Array.isArray(data.media)) {
                 data.media = data.media.map(mediaItem => {
                     const { variants, ...rest } = mediaItem;
@@ -241,8 +253,18 @@ export default function FetchTweetApp() {
                 });
             }
 
-            setOriginalTweetData(JSON.parse(JSON.stringify(data))); // Store a deep copy for logging
-            setTweetData(data); // Set the mutable data for the form
+            // --- FIX 2: Repair the split categories array from the backend ---
+            if (data.categories && Array.isArray(data.categories)) {
+                const joinedCategories = data.categories.join('');
+                if (ALL_CATEGORIES.includes(joinedCategories)) {
+                    data.categories = [joinedCategories];
+                } else {
+                    data.categories = ALL_CATEGORIES.filter(c => joinedCategories.includes(c));
+                }
+            }
+
+            setOriginalTweetData(JSON.parse(JSON.stringify(data)));
+            setTweetData(data);
 
         } catch (err) {
             setError(`Failed to fetch data: ${err.message}`);
@@ -256,16 +278,14 @@ export default function FetchTweetApp() {
         setError(null);
         setSaveSuccess(null);
 
-        // --- MODIFIED: Log "before" and "after" data to the console ---
         console.log(" Modyfing Data (Original Fetched Data):", originalTweetData);
         console.log("📤 Saving updated data (Final Data):", tweetData);
 
-        // Simulating a network request for demonstration
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         setIsSaving(false);
         setSaveSuccess("Data saved successfully! Check the console for the payload.");
-        // In a real app, you would have your API call here:
+        // Replace the timeout simulation above with your actual API call:
         // await fetch('YOUR_SAVE_API_ENDPOINT', { method: 'POST', body: JSON.stringify(tweetData) });
     };
 

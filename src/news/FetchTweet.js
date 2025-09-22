@@ -8,38 +8,79 @@ const ALL_CATEGORIES = [
     "National",
     "International",
     "Telangana",
-  "AndhraPradesh",
-  "Viral",
+    "AndhraPradesh",
+    "Viral",
 ];
 
 /**
- * A recursive component to render an input field for a given piece of data.
- * It handles nested objects by rendering headers for each level.
+ * A recursive component to render form fields for a piece of data.
+ * It handles nested objects and arrays, with special handling for the 'media' array.
  * @param {object} props - The component props.
  * @param {string[]} props.path - The path to the current field (e.g., ['data', 'user']).
  * @param {string} props.fieldKey - The key of the field (e.g., 'name').
  * @param {any} props.fieldValue - The value of the field.
- * @param {Function} props.onFieldChange - The callback function to update state.
+ * @param {Function} props.onFieldChange - Callback to update a field's value.
+ * @param {Function} props.onItemRemove - Callback to remove an item from an array.
  * @returns {JSX.Element}
  */
-const FormField = ({ path, fieldKey, fieldValue, onFieldChange }) => {
+const FormField = ({ path, fieldKey, fieldValue, onFieldChange, onItemRemove }) => {
     const currentPath = [...path, fieldKey];
     const fieldId = currentPath.join('.');
 
-    // Don't render fields for objects or arrays themselves, only their primitive contents.
-    if (typeof fieldValue === 'object' && fieldValue !== null) {
+    // --- MODIFIED: Special handling for arrays to allow item removal ---
+    if (Array.isArray(fieldValue)) {
         return (
             <div className="mt-4 pt-4 border-t border-gray-700">
                 <h4 className="text-md font-semibold text-cyan-400 capitalize mb-2">{fieldKey.replace(/_/g, ' ')}</h4>
-                {/* Recursively render fields for the nested object */}
-                {Object.entries(fieldValue).map(([key, value]) => (
-                    <FormField key={key} path={currentPath} fieldKey={key} fieldValue={value} onFieldChange={onFieldChange} />
+                {fieldValue.map((item, index) => (
+                    <div key={index} className="relative bg-gray-700/50 p-4 rounded-lg mb-4 border border-gray-600">
+                        <button
+                            type="button"
+                            onClick={() => onItemRemove(currentPath, index)}
+                            title="Remove this media item"
+                            className="absolute top-3 right-3 p-1 rounded-full text-gray-400 hover:bg-red-500 hover:text-white transition-colors duration-200"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                        {/* Recursively render fields for the object inside the array */}
+                        {Object.entries(item).map(([key, value]) => (
+                            <FormField
+                                key={key}
+                                path={[...currentPath, index]} // Path now includes the array index
+                                fieldKey={key}
+                                fieldValue={value}
+                                onFieldChange={onFieldChange}
+                                onItemRemove={onItemRemove}
+                            />
+                        ))}
+                    </div>
                 ))}
             </div>
         );
     }
 
-    // Render textareas for long strings, inputs for others.
+    // Handle Objects (that are not arrays)
+    if (typeof fieldValue === 'object' && fieldValue !== null) {
+        return (
+            <div className="mt-4 pt-4 border-t border-gray-700">
+                <h4 className="text-md font-semibold text-cyan-400 capitalize mb-2">{fieldKey.replace(/_/g, ' ')}</h4>
+                {Object.entries(fieldValue).map(([key, value]) => (
+                    <FormField
+                        key={key}
+                        path={currentPath}
+                        fieldKey={key}
+                        fieldValue={value}
+                        onFieldChange={onFieldChange}
+                        onItemRemove={onItemRemove}
+                    />
+                ))}
+            </div>
+        );
+    }
+
+    // Handle Primitives (strings, numbers, etc.)
     const isLongText = typeof fieldValue === 'string' && fieldValue.length > 100;
     const InputComponent = isLongText ? 'textarea' : 'input';
 
@@ -63,27 +104,31 @@ const FormField = ({ path, fieldKey, fieldValue, onFieldChange }) => {
 
 /**
  * The main form component to edit the fetched tweet data.
- * @param {object} props - The component props.
- * @param {object} props.tweetData - The tweet data object to be edited.
- * @param {Function} props.setTweetData - Function to update the tweet data state.
- * @param {Function} props.onSave - Callback to handle the save action.
- * @param {boolean} props.isSaving - Flag to indicate if the save operation is in progress.
- * @param {Function} props.onReset - Callback to reset the form and fetch a new tweet.
- * @returns {JSX.Element}
  */
 const TweetEditForm = ({ tweetData, setTweetData, onSave, isSaving, onReset }) => {
-    // A memoized handler to prevent re-creation on every render.
     const handleFieldChange = useCallback((path, newValue) => {
         setTweetData(currentData => {
-            // Deep copy to avoid direct state mutation
             const newData = JSON.parse(JSON.stringify(currentData));
             let temp = newData;
-            // Navigate to the parent of the target property
             for (let i = 0; i < path.length - 1; i++) {
                 temp = temp[path[i]];
             }
-            // Update the final property
             temp[path[path.length - 1]] = newValue;
+            return newData;
+        });
+    }, [setTweetData]);
+
+    // --- NEW: Handler to remove an item from an array in the state ---
+    const handleItemRemove = useCallback((path, indexToRemove) => {
+        setTweetData(currentData => {
+            const newData = JSON.parse(JSON.stringify(currentData));
+            let targetArray = newData;
+            for (let key of path) {
+                targetArray = targetArray[key];
+            }
+            if (Array.isArray(targetArray)) {
+                targetArray.splice(indexToRemove, 1);
+            }
             return newData;
         });
     }, [setTweetData]);
@@ -102,9 +147,15 @@ const TweetEditForm = ({ tweetData, setTweetData, onSave, isSaving, onReset }) =
 
             <form onSubmit={(e) => { e.preventDefault(); onSave(); }}>
                 {Object.entries(tweetData).map(([key, value]) => (
-                    <FormField key={key} path={[]} fieldKey={key} fieldValue={value} onFieldChange={handleFieldChange} />
+                    <FormField
+                        key={key}
+                        path={[]}
+                        fieldKey={key}
+                        fieldValue={value}
+                        onFieldChange={handleFieldChange}
+                        onItemRemove={handleItemRemove} // Pass the new handler down
+                    />
                 ))}
-
                 <div className="text-center mt-8">
                     <button
                         type="submit"
@@ -125,6 +176,7 @@ export default function FetchTweetApp() {
     const [type, setType] = useState('normal_post');
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [tweetData, setTweetData] = useState(null);
+    const [originalTweetData, setOriginalTweetData] = useState(null); // <-- NEW: State for "before" data
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -146,6 +198,7 @@ export default function FetchTweetApp() {
 
     const handleReset = () => {
         setTweetData(null);
+        setOriginalTweetData(null); // Reset original data
         setTweetId('');
         setSelectedCategories([]);
         setError(null);
@@ -161,6 +214,7 @@ export default function FetchTweetApp() {
         setError(null);
         setSaveSuccess(null);
         setTweetData(null);
+        setOriginalTweetData(null);
 
         const apiUrl = 'https://twitterapi-node.onrender.com/api/formatted-tweet';
         const requestPayload = {
@@ -176,8 +230,20 @@ export default function FetchTweetApp() {
                 body: JSON.stringify(requestPayload),
             });
             if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-            const data = await response.json();
-            setTweetData(data);
+
+            let data = await response.json();
+
+            // --- MODIFIED: Process media array to remove 'variants' ---
+            if (data.media && Array.isArray(data.media)) {
+                data.media = data.media.map(mediaItem => {
+                    const { variants, ...rest } = mediaItem;
+                    return rest;
+                });
+            }
+
+            setOriginalTweetData(JSON.parse(JSON.stringify(data))); // Store a deep copy for logging
+            setTweetData(data); // Set the mutable data for the form
+
         } catch (err) {
             setError(`Failed to fetch data: ${err.message}`);
         } finally {
@@ -189,31 +255,18 @@ export default function FetchTweetApp() {
         setIsSaving(true);
         setError(null);
         setSaveSuccess(null);
-        console.log("📤 Saving updated data:", tweetData);
 
-        // --- Backend Integration Point ---
-        // Replace the timeout with your actual API call to save the data.
-        // The API endpoint and method (POST/PUT) will depend on your backend implementation.
-        // Example:
-        // try {
-        //   const response = await fetch('YOUR_SAVE_API_ENDPOINT', {
-        //     method: 'POST', // or 'PUT'
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify(tweetData),
-        //   });
-        //   if (!response.ok) throw new Error('Failed to save.');
-        //   const result = await response.json();
-        //   setSaveSuccess("Data saved successfully!");
-        // } catch (err) {
-        //   setError(`Save failed: ${err.message}`);
-        // } finally {
-        //   setIsSaving(false);
-        // }
+        // --- MODIFIED: Log "before" and "after" data to the console ---
+        console.log(" Modyfing Data (Original Fetched Data):", originalTweetData);
+        console.log("📤 Saving updated data (Final Data):", tweetData);
 
         // Simulating a network request for demonstration
         await new Promise(resolve => setTimeout(resolve, 1500));
+
         setIsSaving(false);
         setSaveSuccess("Data saved successfully! Check the console for the payload.");
+        // In a real app, you would have your API call here:
+        // await fetch('YOUR_SAVE_API_ENDPOINT', { method: 'POST', body: JSON.stringify(tweetData) });
     };
 
     return (
@@ -233,7 +286,6 @@ export default function FetchTweetApp() {
                             <h1 className="text-3xl sm:text-4xl font-bold text-cyan-400">Tweet Data Fetcher</h1>
                             <p className="text-gray-400 mt-2">Enter a Tweet ID to fetch and edit its data.</p>
                         </div>
-
                         <div className="space-y-6">
                             <div>
                                 <label htmlFor="tweetId" className="block text-sm font-medium text-gray-300 mb-2">Tweet ID or URL</label>
@@ -258,7 +310,6 @@ export default function FetchTweetApp() {
                                 </select>
                             </div>
                         </div>
-
                         <div className="text-center mt-8">
                             <button onClick={fetchTweet} disabled={isLoading} className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white font-bold py-2 px-8 rounded-lg transition-transform transform hover:scale-105 duration-300">
                                 {isLoading ? 'Fetching...' : 'Fetch Tweet'}
@@ -266,7 +317,6 @@ export default function FetchTweetApp() {
                         </div>
                     </div>
                 )}
-
                 <div className="mt-6 text-center">
                     {isLoading && (
                         <div className="flex justify-center items-center bg-gray-800 border border-gray-700 rounded-2xl p-6">

@@ -1,616 +1,353 @@
-import React, { useEffect, useState } from "react";
-import {
-  FiHome,
-  FiFileText,
-  FiSettings,
-  FiBell,
-  FiLogOut,
-} from "react-icons/fi";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { FiHome, FiFileText, FiSettings, FiLogOut, FiBell, FiChevronLeft, FiChevronRight, FiSearch, FiPlusCircle, FiXCircle } from "react-icons/fi";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+
+// --- CONFIGURATION ---
+// const API_BASE_URL = "http://localhost:4000/api";
+const API_BASE_URL = "https://twitterapi-node.onrender.com/api";
+const POSTS_PER_PAGE = 10;
+const ALL_CATEGORIES = [ "Politics", "Astrology", "Sports", "Entertainment", "Technology", "Business", "Education", "Health", "Science", "International", "National", "Crime", "Telangana", "AndhraPradesh", "Viral" ];
+
+const DEFAULT_POST_STATE = {
+    title: "", summary: "", text: "", url: "", imageUrl: "", videoUrl: "",
+    source: "Manual", sourceType: "manual", categories: [], isPublished: true,
+    type: "full_post", twitterUrl: "", relatedStories: [],
+};
+
 
 function AdminDashboard() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
-
   const [editingPost, setEditingPost] = useState(null);
-  const [formData, setFormData] = useState({});
-  const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
-  const [postType, setPostType] = useState("normal_post");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [quickPostText, setQuickPostText] = useState("");
 
-  const categories = [
-    "Politics",
-    "Sports",
-    "Entertainment",
-    "Technology",
-    "Business",
-    "Education",
-    "Health",
-    "Science",
-    "International",
-    "National",
-    "Crime",
-    "Telangana",
-    "Andhrapradesh"
-  ];
-
-  const fetchPosts = async (pageNum) => {
+  const fetchPosts = useCallback(async (pageNum) => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `https://twitterapi-node.onrender.com/api/saved-tweets?page=${pageNum}&limit=${limit}`
-      );
+      const res = await fetch(`${API_BASE_URL}/posts?page=${pageNum}&limit=${POSTS_PER_PAGE}`);
       const data = await res.json();
-      setPosts(data.posts || []);
-      setTotalPages(data.totalPages || 1);
+      if (data.status === 'success') {
+          setPosts(data.posts || []);
+          setTotalPages(data.totalPages || 1);
+      } else {
+          throw new Error(data.message || "Failed to fetch posts");
+      }
     } catch (err) {
       console.error("Error fetching posts:", err);
+      alert("Error: " + err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchPosts(page);
-  }, [page]);
+  }, [page, fetchPosts]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this post?")) return;
-    try {
-      const res = await fetch(
-        `https://twitterapi-node.onrender.com/api/saved-tweets/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
-      if (res.ok) setPosts((prev) => prev.filter((p) => p._id !== id));
-    } catch (err) {
-      console.error(err);
-      alert("Error deleting post");
+  const handleOpenModal = (post = null) => {
+    if (post) {
+      setEditingPost(post);
+    } else {
+      setEditingPost(DEFAULT_POST_STATE);
     }
-  };
-
-  const handleSave = async () => {
-    if (!formData) return;
-
-    const url = editingPost
-      ? `https://twitterapi-node.onrender.com/api/saved-tweets/${editingPost._id}`
-      : `https://twitterapi-node.onrender.com/api/saved-tweets/`;
-
-    try {
-      const res = await fetch(url, {
-        method: editingPost ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, type: postType }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        if (editingPost) {
-          setPosts((prev) =>
-            prev.map((p) => (p._id === editingPost._id ? data.post : p))
-          );
-        } else {
-          setPosts([data.post, ...posts]);
-        }
-        setEditingPost(null);
-        setFormData({});
-        setIsModalOpen(false);
-      } else {
-        alert("Error saving post: " + data.error);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error saving post");
-    }
-  };
-
-  const handlePublish = async (id, currentStatus) => {
-    try {
-      const res = await fetch(`https://twitterapi-node.onrender.com/api/saved-tweets/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isPublished: !currentStatus }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setPosts((prev) => prev.map((p) => (p._id === id ? data.post : p)));
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleEdit = (post) => {
-    setEditingPost(post);
-    setPostType(post.type || "full_post");
-    setFormData({
-      title: post.title || "",
-      summary: post.summary || "",
-      text: post.text || "",
-      url: post.url || "",
-      twitterUrl: post.twitterUrl || "",
-      source: post.source || "Twitter",
-      media: post.media || [],
-      categories: post.categories || [],
-    });
     setIsModalOpen(true);
   };
 
-  const handleCategoryToggle = (category) => {
-    const current = formData.categories || [];
-    if (current.includes(category)) {
-      setFormData({
-        ...formData,
-        categories: current.filter((c) => c !== category),
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingPost(null);
+  };
+
+  const handleSave = async (postData) => {
+    const isUpdating = !!postData._id;
+    const url = isUpdating ? `${API_BASE_URL}/post/${postData._id}` : `${API_BASE_URL}/post`;
+    const method = isUpdating ? "PUT" : "POST";
+
+    // ✅ Ensure relatedStories are sent as an array of IDs
+    const payload = {
+      ...postData,
+      relatedStories: postData.relatedStories?.map(story => story._id) || []
+    };
+
+    try {
+      const res = await fetch(url, {
+        method: method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-    } else {
-      setFormData({ ...formData, categories: [...current, category] });
+      const result = await res.json();
+
+      if (result.status === 'success') {
+        alert(`Post successfully ${isUpdating ? 'updated' : 'created'}!`);
+        handleCloseModal();
+        fetchPosts(page);
+      } else {
+        throw new Error(result.error || "An unknown error occurred.");
+      }
+    } catch (err) {
+      console.error("Error saving post:", err);
+      alert("Error saving post: " + err.message);
     }
   };
 
-  const renderFormFields = () => {
-    switch (postType) {
-      case "normal_post":
-      case "short_news":
-        return (
-          <textarea
-            value={formData.text || ""}
-            onChange={(e) => setFormData({ ...formData, text: e.target.value })}
-            className="w-full border rounded px-3 py-2"
-            placeholder="Enter text..."
-          />
-        );
-      case "full_post":
-        return (
-          <>
-            <input
-              type="text"
-              value={formData.title || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
-              }
-              className="w-full border rounded px-3 py-2 mb-2"
-              placeholder="Title"
-            />
-            <textarea
-              value={formData.summary || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, summary: e.target.value })
-              }
-              className="w-full border rounded px-3 py-2 mb-2"
-              placeholder="Summary"
-            />
-            <textarea
-              value={formData.text || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, text: e.target.value })
-              }
-              className="w-full border rounded px-3 py-2"
-              placeholder="Full content"
-            />
-            <button
-              onClick={() => setCategoriesModalOpen(true)}
-              className="px-3 py-1 border rounded mt-2"
-            >
-              {formData.categories?.length
-                ? formData.categories.join(", ")
-                : "Select Categories"}
-            </button>
-          </>
-        );
-      case "image_gallery":
-        return (
-          <>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={(e) => {
-                const files = Array.from(e.target.files);
-                const newImages = files.map((file) => ({
-                  type: "photo",
-                  url: URL.createObjectURL(file),
-                  file,
-                }));
-                setFormData({
-                  ...formData,
-                  media: [...(formData.media || []), ...newImages],
-                });
-              }}
-            />
-            <div className="flex gap-2 mt-2">
-              {formData.media?.map((m, idx) => (
-                <img
-                  key={idx}
-                  src={m.url}
-                  alt="gallery"
-                  className="w-24 h-24 object-cover rounded"
-                />
-              ))}
-            </div>
-          </>
-        );
-      case "video_post":
-        return (
-          <>
-            <input
-              type="file"
-              accept="video/*"
-              onChange={(e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                setFormData({
-                  ...formData,
-                  media: [{ type: "video", url: URL.createObjectURL(file), file }],
-                });
-              }}
-            />
-            {formData.media?.[0] && (
-              <video
-                src={formData.media[0].url}
-                controls
-                className="w-64 mt-2 rounded"
-              />
-            )}
-          </>
-        );
-      default:
-        return null;
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this post permanently?")) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/post/${id}`, { method: "DELETE" });
+      const result = await res.json();
+      if (result.status === 'success') {
+        alert("Post deleted.");
+        fetchPosts(page);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting post: " + err.message);
     }
   };
 
-  // Analytics Data
-  const categoryCounts = categories.map((cat) => ({
-    name: cat,
-    count: posts.filter((p) => p.categories?.includes(cat)).length,
-  }));
+  const handleQuickCreate = () => {
+    if (!quickPostText.trim()) {
+      alert("Please paste some text to create a post.");
+      return;
+    }
+    const lines = quickPostText.trim().split('\n');
+    const title = lines[0] || "";
+    const summary = lines.slice(1).join('\n').trim();
 
-  const stats = {
-    total: posts.length,
-    published: posts.filter((p) => p.isPublished).length,
-    drafts: posts.filter((p) => !p.isPublished).length,
+    const newPost = { ...DEFAULT_POST_STATE, title, summary, text: summary, categories: ["Viral"] };
+    handleOpenModal(newPost);
+    setQuickPostText("");
   };
-
+  
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white shadow flex flex-col">
+    <div className="flex h-screen bg-gray-100 font-sans">
+      <aside className="w-64 bg-white shadow flex-col hidden md:flex">
         <div className="text-2xl font-bold p-4 border-b">NewsAdmin</div>
         <nav className="flex-1 p-4 space-y-2">
-          <button className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 w-full">
-            <FiHome /> Dashboard
-          </button>
-          <button className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 w-full">
-            <FiFileText /> Posts
-          </button>
-          <button className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 w-full">
-            <FiSettings /> Categories
-          </button>
+          <a href="#" className="flex items-center gap-3 px-3 py-2 rounded bg-blue-100 text-blue-700 font-semibold"><FiHome /> Dashboard</a>
+          <a href="#" className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100 w-full text-gray-600"><FiFileText /> Posts</a>
+          <a href="#" className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100 w-full text-gray-600"><FiSettings /> Settings</a>
         </nav>
         <div className="p-4 border-t">
-          <button className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 w-full">
-            <FiLogOut /> Logout
-          </button>
+          <button className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100 w-full text-gray-600"><FiLogOut /> Logout</button>
         </div>
       </aside>
 
-      {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
-        {/* Topbar */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
           <div className="flex items-center gap-4">
-            <input
-              type="text"
-              placeholder="Search posts..."
-              className="border rounded px-3 py-1"
+            <input type="text" placeholder="Search..." className="border rounded-lg px-3 py-2 hidden sm:block" />
+            <FiBell className="text-2xl text-gray-500" />
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+            <h2 className="font-semibold text-gray-700 mb-3">Quick Post Creator</h2>
+            <p className="text-sm text-gray-500 mb-3">Paste a news snippet below (title on the first line, summary after) and click "Create" to quickly open the post editor.</p>
+            <textarea
+                value={quickPostText}
+                onChange={(e) => setQuickPostText(e.target.value)}
+                rows="4"
+                className="w-full border rounded-lg p-2 bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                placeholder="వైరల్ వీడియో: దంగల్ సీన్‌తో పాక్ జట్టుపై సెటైర్
+ఇంటర్నెట్‌లో ఒక వీడియో తెగ వైరల్ అవుతోంది..."
             />
-            <FiBell className="text-xl" />
-          </div>
+            <div className="text-right mt-3">
+                <button
+                    onClick={handleQuickCreate}
+                    className="px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition-colors disabled:bg-gray-400"
+                    disabled={!quickPostText.trim()}
+                >
+                    Parse & Create Post
+                </button>
+            </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded shadow p-4 text-center">
-            <div className="text-gray-500">Total Posts</div>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </div>
-          <div className="bg-white rounded shadow p-4 text-center">
-            <div className="text-gray-500">Published</div>
-            <div className="text-2xl font-bold">{stats.published}</div>
-          </div>
-          <div className="bg-white rounded shadow p-4 text-center">
-            <div className="text-gray-500">Drafts</div>
-            <div className="text-2xl font-bold">{stats.drafts}</div>
-          </div>
-        </div>
-
-        {/* Analytics Chart */}
-        <div className="bg-white rounded shadow p-4 mb-6">
-          <h2 className="font-semibold mb-4">Posts by Category</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={categoryCounts}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="count" fill="#3b82f6" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Posts Table */}
-        <div className="bg-white rounded shadow overflow-x-auto mb-6">
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
           <div className="flex justify-between items-center p-4 border-b">
-            <h3 className="font-semibold text-lg">Posts</h3>
-            <button
-              onClick={() => {
-                setEditingPost(null);
-                setFormData({});
-                setPostType("normal_post");
-                setIsModalOpen(true);
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
+            <h3 className="font-semibold text-lg text-gray-800">Manage Posts</h3>
+            <button onClick={() => handleOpenModal()} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors">
               + Create Post
             </button>
           </div>
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-100 text-gray-700">
+            <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
               <tr>
-                <th className="px-4 py-2">#</th>
-                <th className="px-4 py-2">Title / Text</th>
-                <th className="px-4 py-2">Categories</th>
-                <th className="px-4 py-2">Media</th>
-                <th className="px-4 py-2">Published</th>
-                <th className="px-4 py-2 text-right">Actions</th>
+                <th className="px-4 py-3">Title</th>
+                <th className="px-4 py-3">Categories</th>
+                <th className="px-4 py-3">Source</th>
+                <th className="px-4 py-3">Published</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="6" className="text-center p-4">
-                    Loading...
-                  </td>
-                </tr>
-              ) : posts.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="6"
-                    className="text-center p-4 text-gray-500"
-                  >
-                    No posts found.
-                  </td>
-                </tr>
-              ) : (
-                posts.map((post, index) => (
-                  <tr
-                    key={post._id}
-                    className="border-t hover:bg-gray-50 transition"
-                  >
-                    <td className="px-4 py-2">
-                      {(page - 1) * limit + index + 1}
-                    </td>
-                    <td className="px-4 py-2 max-w-xs truncate">
-                      {post.title || post.text}
-                    </td>
-                    <td className="px-4 py-2">
-                      {post.categories?.join(", ") || "-"}
-                    </td>
-                    <td className="px-4 py-2">
-                      {post.media?.[0] ? (
-                        post.media[0].type === "video" ? (
-                          <video
-                            src={post.media[0].url}
-                            className="w-24 h-16 object-cover"
-                          />
-                        ) : (
-                          <img
-                            src={post.media[0].url}
-                            alt="media"
-                            className="w-24 h-16 object-cover rounded"
-                          />
-                        )
-                      ) : (
-                        <span className="text-gray-400">No Media</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      {post.isPublished ? "Yes" : "No"}
-                    </td>
-                    <td className="px-4 py-2 text-right">
+              {loading ? ( <tr><td colSpan="5" className="text-center p-8 text-gray-500">Loading...</td></tr> ) : 
+                posts.map((post) => (
+                  <tr key={post._id} className="border-t hover:bg-gray-50">
+                    <td className="px-4 py-3 max-w-sm"><p className="font-medium text-gray-800 truncate">{post.title}</p><p className="text-gray-500 truncate">{post.summary}</p></td>
+                    <td className="px-4 py-3"><span className="text-gray-600">{post.categories?.join(", ") || "-"}</span></td>
+                    <td className="px-4 py-3"><span className="bg-gray-200 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">{post.source}</span></td>
+                    <td className="px-4 py-3">{post.isPublished ? <span className="text-green-600 font-semibold">Yes</span> : <span className="text-red-600 font-semibold">No</span>}</td>
+                    <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => handleEdit(post)}
-                          className="px-3 py-1 rounded border hover:bg-gray-100"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(post._id)}
-                          className="px-3 py-1 rounded border border-red-500 text-red-600 hover:bg-red-100"
-                        >
-                          Delete
-                        </button>
-                        <button
-                          onClick={() =>
-                            handlePublish(post._id, post.isPublished)
-                          }
-                          className={`px-3 py-1 rounded ${
-                            post.isPublished
-                              ? "bg-gray-300 hover:bg-gray-400"
-                              : "bg-blue-600 text-white hover:bg-blue-700"
-                          }`}
-                        >
-                          {post.isPublished ? "Unpublish" : "Publish"}
-                        </button>
+                        <button onClick={() => handleOpenModal(post)} className="px-3 py-1 rounded-md border font-semibold text-gray-700 hover:bg-gray-100">Edit</button>
+                        <button onClick={() => handleDelete(post._id)} className="px-3 py-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50 font-semibold">Delete</button>
                       </div>
                     </td>
                   </tr>
                 ))
-              )}
+              }
             </tbody>
           </table>
-
-          {/* Pagination */}
           <div className="flex justify-between items-center p-4 border-t">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage((prev) => prev - 1)}
-              className={`px-3 py-1 rounded border ${
-                page === 1
-                  ? "text-gray-400 border-gray-300 cursor-not-allowed"
-                  : "hover:bg-gray-100"
-              }`}
-            >
-              Prev
-            </button>
-            <span>
-              Page {page} of {totalPages}
-            </span>
-            <button
-              disabled={page === totalPages}
-              onClick={() => setPage((prev) => prev + 1)}
-              className={`px-3 py-1 rounded border ${
-                page === totalPages
-                  ? "text-gray-400 border-gray-300 cursor-not-allowed"
-                  : "hover:bg-gray-100"
-              }`}
-            >
-              Next
-            </button>
+            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="flex items-center gap-2 px-3 py-2 rounded-lg border font-semibold text-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed hover:bg-gray-100"><FiChevronLeft /> Prev</button>
+            <span className="font-semibold text-gray-700">Page {page} of {totalPages}</span>
+            <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="flex items-center gap-2 px-3 py-2 rounded-lg border font-semibold text-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed hover:bg-gray-100">Next <FiChevronRight /></button>
           </div>
         </div>
-
-        {/* Create / Edit Modal */}
-{isModalOpen && (
-  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-    {/* Modal container */}
-    <div className="bg-white w-full max-w-6xl max-h-[90vh] rounded-xl shadow-xl p-8 relative flex flex-col md:flex-row gap-6 overflow-hidden">
-      {/* Left: Form */}
-      <div className="flex-1 space-y-4 overflow-y-auto pr-2">
-        <h2 className="text-2xl font-semibold mb-4">
-          {editingPost ? "Edit Post" : "Create Post"}
-        </h2>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Post Type</label>
-          <select
-            value={postType}
-            onChange={(e) => setPostType(e.target.value)}
-            className="border rounded px-3 py-2 w-full"
-          >
-            <option value="normal_post">Normal Post</option>
-            <option value="short_news">Short News</option>
-            <option value="full_post">Full Post</option>
-            <option value="image_gallery">Image Gallery</option>
-            <option value="video_post">Video Post</option>
-          </select>
-        </div>
-
-        {renderFormFields()}
-
-        <div className="flex justify-end gap-3 mt-4">
-          <button
-            onClick={() => {
-              setEditingPost(null);
-              setFormData({});
-              setIsModalOpen(false);
-            }}
-            className="px-5 py-2 rounded border hover:bg-gray-100"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-5 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-          >
-            Save
-          </button>
-        </div>
-      </div>
-
-      {/* Right: Media Preview */}
-      <div className="w-full md:w-80 flex-shrink-0 overflow-y-auto max-h-[80vh]">
-        <h3 className="font-semibold mb-2">Media Preview</h3>
-        {formData.media?.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4">
-            {formData.media.map((m, idx) => (
-              <div key={idx} className="relative group">
-                {m.type === "video" ? (
-                  <video
-                    src={m.url}
-                    controls
-                    className="w-full h-48 object-cover rounded"
-                  />
-                ) : (
-                  <img
-                    src={m.url}
-                    alt="media"
-                    className="w-full h-48 object-cover rounded"
-                  />
-                )}
-                <button
-                  onClick={() => {
-                    const updated = formData.media.filter((_, i) => i !== idx);
-                    setFormData({ ...formData, media: updated });
-                  }}
-                  className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-400">No media selected</p>
-        )}
-      </div>
+      </main>
+      {isModalOpen && <PostFormModal post={editingPost} onSave={handleSave} onClose={handleCloseModal} />}
     </div>
-  </div>
-)}
+  );
+}
 
-        {/* Categories Modal */}
-        {categoriesModalOpen && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white w-full max-w-lg rounded-lg shadow-lg p-6">
-              <h3 className="text-xl font-semibold mb-4">Select Categories</h3>
-              <div className="flex flex-wrap gap-3">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => handleCategoryToggle(cat)}
-                    className={`px-4 py-2 rounded-md border ${
-                      formData.categories?.includes(cat)
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-gray-100 hover:bg-gray-200"
-                    }`}
-                  >
-                    {cat}
-                  </button>
+// --- HOOK FOR DEBOUNCING ---
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+}
+
+// --- MODAL & FORM COMPONENT ---
+function PostFormModal({ post, onSave, onClose }) {
+  const [formData, setFormData] = useState(post);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  useEffect(() => {
+    // Ensure the form data is initialized correctly, especially for a new post
+    setFormData(post || DEFAULT_POST_STATE);
+  }, [post]);
+  
+  // Effect for fetching search results
+  useEffect(() => {
+    const fetchSearch = async () => {
+      if (debouncedSearchQuery.length < 3) {
+        setSearchResults([]);
+        return;
+      }
+      setIsSearching(true);
+      try {
+        const res = await fetch(`${API_BASE_URL}/posts/search?q=${debouncedSearchQuery}`);
+        const data = await res.json();
+        // Filter out stories that are already related
+        const currentRelatedIds = (formData.relatedStories || []).map(s => s._id);
+        setSearchResults(data.filter(p => p._id !== formData._id && !currentRelatedIds.includes(p._id)));
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+    fetchSearch();
+  }, [debouncedSearchQuery, formData._id, formData.relatedStories]);
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleCategoriesChange = (category) => {
+    const current = formData.categories || [];
+    const newCategories = current.includes(category) ? current.filter(c => c !== category) : [...current, category];
+    setFormData(prev => ({ ...prev, categories: newCategories }));
+  };
+
+  const handleAddRelated = (story) => {
+    const updatedRelated = [...(formData.relatedStories || []), story];
+    setFormData(prev => ({...prev, relatedStories: updatedRelated}));
+    setSearchQuery(""); // Clear search
+    setSearchResults([]); // Clear results
+  };
+
+  const handleRemoveRelated = (storyId) => {
+    const updatedRelated = (formData.relatedStories || []).filter(s => s._id !== storyId);
+    setFormData(prev => ({...prev, relatedStories: updatedRelated}));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+  
+  const FormInput = ({ label, name, value, ...props }) => (
+    <div><label className="block text-sm font-medium text-gray-600 mb-1">{label}</label><input name={name} value={value || ''} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" {...props} /></div>
+  );
+  const FormTextarea = ({ label, name, value, rows = 3 }) => (
+    <div><label className="block text-sm font-medium text-gray-600 mb-1">{label}</label><textarea name={name} value={value || ''} onChange={handleChange} rows={rows} className="w-full border rounded-lg px-3 py-2 bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" /></div>
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <form onSubmit={handleSubmit} className="bg-white w-full h-full max-w-4xl max-h-[95vh] rounded-xl shadow-2xl flex flex-col">
+        <div className="flex justify-between items-center p-5 border-b"><h2 className="text-2xl font-bold text-gray-800">{formData._id ? "Edit Post" : "Create New Post"}</h2><button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl">&times;</button></div>
+        <div className="p-6 space-y-5 overflow-y-auto">
+          <FormInput label="Title" name="title" value={formData.title} required />
+          <FormTextarea label="Summary" name="summary" value={formData.summary} rows={3} />
+          <FormTextarea label="Full Text / Content" name="text" value={formData.text} rows={6} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><FormInput label="Image URL" name="imageUrl" value={formData.imageUrl} placeholder="https://..." /><FormInput label="Video URL" name="videoUrl" value={formData.videoUrl} placeholder="https://..." /><FormInput label="Source URL" name="url" value={formData.url} placeholder="https://..." /><FormInput label="Twitter URL" name="twitterUrl" value={formData.twitterUrl} placeholder="https://..." /></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><FormInput label="Source Name" name="source" value={formData.source} placeholder="e.g., NTV, Manual" /><div><label className="block text-sm font-medium text-gray-600 mb-1">Post Type</label><select name="type" value={formData.type} onChange={handleChange} className="w-full border rounded-lg px-3 py-2 bg-gray-50"><option value="full_post">Full Post</option><option value="normal_post">Normal Post</option></select></div></div>
+          <div><label className="block text-sm font-medium text-gray-600 mb-2">Categories</label><div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-lg border">{ALL_CATEGORIES.map(cat => (<button type="button" key={cat} onClick={() => handleCategoriesChange(cat)} className={`px-3 py-1.5 text-sm rounded-full border-2 transition-colors ${formData.categories?.includes(cat) ? "bg-blue-600 text-white border-blue-600" : "bg-white hover:bg-gray-200 border-gray-300"}`}>{cat}</button>))}</div></div>
+          
+          {/* ✅ NEW: Related Stories Section */}
+          <div className="space-y-3 pt-2">
+            <label className="block text-sm font-medium text-gray-600">Related Stories</label>
+            <div className="p-3 bg-gray-50 rounded-lg border space-y-2">
+              {formData.relatedStories?.length > 0 ? (
+                formData.relatedStories.map(story => (
+                  <div key={story._id} className="flex justify-between items-center bg-white p-2 rounded-md border">
+                    <p className="text-sm text-gray-700 truncate">{story.title}</p>
+                    <button type="button" onClick={() => handleRemoveRelated(story._id)}><FiXCircle className="text-red-500 hover:text-red-700"/></button>
+                  </div>
+                ))
+              ) : <p className="text-sm text-gray-400 text-center">No related stories added yet.</p>}
+            </div>
+            <div className="relative">
+              <FiSearch className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" />
+              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search for posts to add..." className="w-full border rounded-lg pl-10 pr-3 py-2" />
+            </div>
+            {isSearching && <p className="text-sm text-gray-500">Searching...</p>}
+            {searchResults.length > 0 && (
+              <div className="border rounded-lg max-h-48 overflow-y-auto">
+                {searchResults.map(result => (
+                  <div key={result._id} className="flex justify-between items-center p-2 border-b last:border-b-0">
+                    <p className="text-sm text-gray-800 truncate">{result.title}</p>
+                    <button type="button" onClick={() => handleAddRelated(result)}><FiPlusCircle className="text-green-600 hover:text-green-800 text-lg"/></button>
+                  </div>
                 ))}
               </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={() => setCategoriesModalOpen(false)}
-                  className="px-4 py-2 border rounded-md hover:bg-gray-100"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
+            )}
           </div>
-        )}
-      </main>
+
+          <div className="flex items-center gap-3 pt-2"><input type="checkbox" id="isPublished" name="isPublished" checked={formData.isPublished} onChange={handleChange} className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" /><label htmlFor="isPublished" className="font-medium text-gray-700">Publish this post immediately</label></div>
+        </div>
+        <div className="flex justify-end gap-3 mt-auto p-5 bg-gray-50 border-t"><button type="button" onClick={onClose} className="px-5 py-2 rounded-lg border font-semibold text-gray-700 hover:bg-gray-200">Cancel</button><button type="submit" className="px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-semibold">Save Post</button></div>
+      </form>
     </div>
   );
 }

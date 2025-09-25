@@ -6,6 +6,8 @@ import NewDashboard from "./news/NewDashboard";
 import EmbedSocialPage from "./news/EmbedPage";
 import TwitterNodeList from "./news/TwitterNodeList";
 import FetchTweet from "./news/FetchTweet";
+import NewArticle from "./news/NewArticle";
+import Ft from "./news/Ft";
 
 function App() {
   return (
@@ -17,6 +19,8 @@ function App() {
       <Route path="/embed" element={<EmbedSocialPage />} />
       <Route path="/twi" element={<TwitterNodeList />} />
       <Route path="/ft" element={<FetchTweet />} />
+      <Route path="/ft1" element={<Ft />} />
+      <Route path="/new" element={<NewArticle />} />
             
       <Route path="/news/list" element={<ListNews />} />
       <Route path="/ArticlesTable" element={<ArticlesTable />} />

@@ -16,6 +16,7 @@ import {
   FiTrash2,
   FiZap,
   FiMenu,
+  FiImage, // New icon for image gallery
 } from "react-icons/fi";
 import { Toaster, toast } from "react-hot-toast";
 
@@ -40,7 +41,7 @@ const ALL_CATEGORIES = [
   "Telangana",
   "AndhraPradesh",
   "Viral",
-  "LifeStyle"
+  "LifeStyle",
 ];
 
 const DEFAULT_POST_STATE = {
@@ -229,8 +230,9 @@ const PostsListPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [editingPost, setEditingPost] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false); // New state for gallery
   const [quickPostText, setQuickPostText] = useState("");
-  const [isPublishingQuick, setIsPublishingQuick] = useState(false); // State for new button
+  const [isPublishingQuick, setIsPublishingQuick] = useState(false);
   const [filters, setFilters] = useState({ source: "", category: "" });
   const [allSources, setAllSources] = useState([]);
   const [selectedPosts, setSelectedPosts] = useState(new Set());
@@ -298,6 +300,12 @@ const PostsListPage = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingPost(null);
+  };
+
+  // New handler for setting image URL from the gallery
+  const handleSetImageUrl = (url) => {
+    setEditingPost((prev) => ({ ...prev, imageUrl: url }));
+    setIsGalleryOpen(false);
   };
 
   const handleSave = async (postData) => {
@@ -719,6 +727,13 @@ const PostsListPage = () => {
           post={editingPost}
           onSave={handleSave}
           onClose={handleCloseModal}
+          onOpenGallery={() => setIsGalleryOpen(true)} // Pass handler to open gallery
+        />
+      )}
+      {isGalleryOpen && (
+        <ImageGalleryModal
+          onSelectImage={handleSetImageUrl}
+          onClose={() => setIsGalleryOpen(false)}
         />
       )}
     </div>
@@ -741,16 +756,133 @@ const SettingsPage = () => (
   </div>
 );
 
+// --- IMAGE GALLERY MODAL COMPONENT ---
+
+function ImageGalleryModal({ onSelectImage, onClose }) {
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const IMAGES_PER_PAGE = 24; // More images per page for gallery view
+
+  const fetchImages = useCallback(async (pageNum) => {
+    setLoading(true);
+    try {
+      // NOTE: We're calling a hypothetical API endpoint here.
+      // You must implement this endpoint in your Node.js backend.
+      // Example endpoint: /api/images?page=1&limit=24
+      const res = await fetch(
+        `${API_BASE_URL}/images?page=${pageNum}&limit=${IMAGES_PER_PAGE}`
+      );
+      const data = await res.json();
+
+      // Assuming the backend returns an array of image objects: { imageUrl: string, title: string }
+      if (data.status === "success" && Array.isArray(data.images)) {
+        setImages(data.images);
+        setTotalPages(data.totalPages || 1);
+      } else {
+        // Fallback for when the endpoint is not yet implemented/returns error
+        setImages([]);
+        setTotalPages(1);
+        toast.error("Image gallery data not available. Check backend API.");
+      }
+    } catch (err) {
+      console.error("Error fetching images for gallery:", err);
+      toast.error("Failed to load image gallery.");
+      setImages([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchImages(page);
+  }, [page, fetchImages]);
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-5xl h-full max-h-[90vh] rounded-xl shadow-2xl flex flex-col">
+        <div className="flex justify-between items-center p-5 border-b">
+          <h2 className="text-2xl font-bold text-gray-800">
+            Select Image from Gallery
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-700 text-2xl"
+          >
+            <FiXCircle />
+          </button>
+        </div>
+        <div className="flex-1 p-4 overflow-y-auto">
+          {loading ? (
+            <div className="text-center py-10 text-gray-500">Loading Images...</div>
+          ) : images.length > 0 ? (
+            <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-3">
+              {images.map((img) => (
+                <div
+                  key={img._id || img.imageUrl}
+                  className="relative w-full aspect-square overflow-hidden rounded-lg shadow-md cursor-pointer group"
+                  onClick={() => onSelectImage(img.imageUrl)}
+                >
+                  <img
+                    src={img.imageUrl}
+                    alt={img.title || "Gallery Image"}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/150?text=Error";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <FiCheck size={30} className="text-white bg-blue-600 rounded-full p-1" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10 text-gray-500">
+              No saved images found. Please check the backend API '/api/images'.
+            </div>
+          )}
+        </div>
+        <div className="flex justify-between items-center p-4 border-t">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border font-semibold text-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed hover:bg-gray-100"
+          >
+            <FiChevronLeft /> Prev
+          </button>
+          <span className="font-semibold text-gray-700">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border font-semibold text-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed hover:bg-gray-100"
+          >
+            Next <FiChevronRight />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- MODAL & FORM COMPONENT ---
-function PostFormModal({ post, onSave, onClose }) {
+function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
   const [formData, setFormData] = useState(post);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
   useEffect(() => {
-    setFormData(post || DEFAULT_POST_STATE);
+    // Ensure post object is fully populated if coming from DB (relatedStories need titles)
+    setFormData(post || DEFAULT_POST_STATE); 
   }, [post]);
+
   useEffect(() => {
     const fetchSearch = async () => {
       if (debouncedSearchQuery.length < 3) {
@@ -779,6 +911,7 @@ function PostFormModal({ post, onSave, onClose }) {
     };
     fetchSearch();
   }, [debouncedSearchQuery, formData._id, formData.relatedStories]);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -786,6 +919,7 @@ function PostFormModal({ post, onSave, onClose }) {
       [name]: type === "checkbox" ? checked : value,
     }));
   };
+
   const handleCategoriesChange = (category) => {
     const current = formData.categories || [];
     const newCategories = current.includes(category)
@@ -793,22 +927,26 @@ function PostFormModal({ post, onSave, onClose }) {
       : [...current, category];
     setFormData((prev) => ({ ...prev, categories: newCategories }));
   };
+
   const handleAddRelated = (story) => {
     const updatedRelated = [...(formData.relatedStories || []), story];
     setFormData((prev) => ({ ...prev, relatedStories: updatedRelated }));
     setSearchQuery("");
     setSearchResults([]);
   };
+
   const handleRemoveRelated = (storyId) => {
     const updatedRelated = (formData.relatedStories || []).filter(
       (s) => s._id !== storyId
     );
     setFormData((prev) => ({ ...prev, relatedStories: updatedRelated }));
   };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave(formData);
   };
+
   const FormInput = memo(({ label, name, value, ...props }) => (
     <div>
       <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -823,6 +961,7 @@ function PostFormModal({ post, onSave, onClose }) {
       />
     </div>
   ));
+
   const FormTextarea = memo(({ label, name, value, rows = 3 }) => (
     <div>
       <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -837,6 +976,7 @@ function PostFormModal({ post, onSave, onClose }) {
       />
     </div>
   ));
+
   const FormInputWithCopy = memo(
     ({ label, name, value, rows = 1, ...props }) => {
       const [isCopied, setIsCopied] = useState(false);
@@ -874,6 +1014,33 @@ function PostFormModal({ post, onSave, onClose }) {
       );
     }
   );
+
+  const ImageUrlInput = () => (
+    <div>
+      <label className="block text-sm font-medium text-gray-600 mb-1">
+        Image URL
+      </label>
+      <div className="flex gap-2">
+        <input
+          name="imageUrl"
+          value={formData.imageUrl || ""}
+          onChange={handleChange}
+          className="flex-1 border rounded-lg px-3 py-2 bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          placeholder="https://..."
+        />
+        <button
+          type="button"
+          onClick={onOpenGallery}
+          className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors flex items-center gap-1"
+          title="Select from saved images"
+        >
+          <FiImage size={18} />
+          <span className="hidden sm:inline">Gallery</span>
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
       <form
@@ -912,12 +1079,7 @@ function PostFormModal({ post, onSave, onClose }) {
             rows={6}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormInput
-              label="Image URL"
-              name="imageUrl"
-              value={formData.imageUrl}
-              placeholder="https://..."
-            />
+            <ImageUrlInput /> {/* Replaced FormInput with new component */}
             <FormInput
               label="Video URL"
               name="videoUrl"

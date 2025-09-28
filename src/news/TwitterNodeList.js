@@ -16,7 +16,10 @@ import {
   FiTrash2,
   FiZap,
   FiMenu,
-  FiImage, // New icon for image gallery
+  FiImage,
+  FiDelete,
+  FiEdit,
+  FiTrash,
 } from "react-icons/fi";
 import { Toaster, toast } from "react-hot-toast";
 
@@ -41,6 +44,8 @@ const ALL_CATEGORIES = [
   "Telangana",
   "AndhraPradesh",
   "Viral",
+  "Photos",
+  "Videos",
   "LifeStyle",
 ];
 
@@ -464,6 +469,32 @@ const PostsListPage = () => {
       .finally(() => setIsPublishingQuick(false));
   };
 
+  // ✅ --- NEW: HANDLER FOR SENDING GLOBAL NOTIFICATION ---
+  const handleSendGlobalNotification = async (postId, postTitle) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to send a GLOBAL notification for "${postTitle}"?\n\nThis will alert ALL users.`
+      )
+    )
+      return;
+
+    const promise = fetch(`${API_BASE_URL}/admin/notify/post/${postId}`, {
+      method: "POST",
+    })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || "Failed to send notification.");
+        return data;
+      });
+
+    toast.promise(promise, {
+      loading: "Sending global notification...",
+      success: (data) =>
+        `Global alert for "${postTitle}" sent! Success: ${data.successCount}, Failed: ${data.failureCount}.`,
+      error: (err) => err.message,
+    });
+  };
+
   const isFiltersApplied = filters.source || filters.category;
 
   return (
@@ -597,13 +628,22 @@ const PostsListPage = () => {
                       onClick={() => handleOpenModal(post)}
                       className="px-3 py-1 rounded-md border font-semibold text-gray-700 hover:bg-gray-100 text-sm"
                     >
-                      Edit
+                      <FiEdit />
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleSendGlobalNotification(post._id, post.title)
+                      }
+                      className="px-3 py-1 rounded-md border border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-semibold text-sm flex items-center gap-1"
+                      title="Send Global Alert"
+                    >
+                      <FiBell />
                     </button>
                     <button
                       onClick={() => handleDelete(post._id)}
                       className="px-3 py-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50 font-semibold text-sm"
                     >
-                      Delete
+                      <FiTrash />
                     </button>
                   </div>
                 </div>
@@ -686,13 +726,23 @@ const PostsListPage = () => {
                           onClick={() => handleOpenModal(post)}
                           className="px-3 py-1 rounded-md border font-semibold text-gray-700 hover:bg-gray-100"
                         >
-                          Edit
+                          {/* Edit */}
+                          <FiEdit />
                         </button>
                         <button
                           onClick={() => handleDelete(post._id)}
                           className="px-3 py-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50 font-semibold"
                         >
-                          Delete
+                          <FiTrash2 />
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleSendGlobalNotification(post._id, post.title)
+                          }
+                          className="px-3 py-1 rounded-md border border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-semibold"
+                          title="Send Global Alert"
+                        >
+                          <FiBell />
                         </button>
                       </div>
                     </td>
@@ -763,28 +813,33 @@ function ImageGalleryModal({ onSelectImage, onClose }) {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const IMAGES_PER_PAGE = 24; // More images per page for gallery view
+  const [searchQuery, setSearchQuery] = useState(""); // New state for search
+  const debouncedSearchQuery = useDebounce(searchQuery, 400); // Debounce search
+  const IMAGES_PER_PAGE = 24;
 
-  const fetchImages = useCallback(async (pageNum) => {
+  const fetchImages = useCallback(async (pageNum, query) => {
     setLoading(true);
     try {
-      // NOTE: We're calling a hypothetical API endpoint here.
-      // You must implement this endpoint in your Node.js backend.
-      // Example endpoint: /api/images?page=1&limit=24
-      const res = await fetch(
-        `${API_BASE_URL}/images?page=${pageNum}&limit=${IMAGES_PER_PAGE}`
-      );
+      const params = new URLSearchParams({
+        page: pageNum,
+        limit: IMAGES_PER_PAGE,
+      });
+      if (query) params.append("q", query); // Add search query
+
+      const res = await fetch(`${API_BASE_URL}/images?${params.toString()}`);
       const data = await res.json();
 
-      // Assuming the backend returns an array of image objects: { imageUrl: string, title: string }
       if (data.status === "success" && Array.isArray(data.images)) {
         setImages(data.images);
         setTotalPages(data.totalPages || 1);
       } else {
-        // Fallback for when the endpoint is not yet implemented/returns error
         setImages([]);
         setTotalPages(1);
-        toast.error("Image gallery data not available. Check backend API.");
+        if (query) {
+          toast.error(`No images found for "${query}"`);
+        } else {
+          toast.error("Image gallery data not available. Check backend API.");
+        }
       }
     } catch (err) {
       console.error("Error fetching images for gallery:", err);
@@ -795,9 +850,20 @@ function ImageGalleryModal({ onSelectImage, onClose }) {
     }
   }, []);
 
+  // Effect to handle page changes OR debounced search query changes
   useEffect(() => {
-    fetchImages(page);
-  }, [page, fetchImages]);
+    // If search query changes, reset to page 1 for new search results
+    if (page === 1) {
+      fetchImages(1, debouncedSearchQuery);
+    } else {
+      setPage(1);
+    }
+  }, [debouncedSearchQuery]);
+
+  // Effect to handle page changes after search (if page != 1)
+  useEffect(() => {
+    fetchImages(page, debouncedSearchQuery);
+  }, [page]);
 
   return (
     <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
@@ -814,9 +880,27 @@ function ImageGalleryModal({ onSelectImage, onClose }) {
             <FiXCircle />
           </button>
         </div>
+
+        {/* Search Bar */}
+        <div className="p-4 border-b">
+          <div className="relative">
+            <FiSearch className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search images by URL or title..."
+              className="w-full border rounded-lg pl-10 pr-3 py-2"
+            />
+          </div>
+        </div>
+        {/* End Search Bar */}
+
         <div className="flex-1 p-4 overflow-y-auto">
           {loading ? (
-            <div className="text-center py-10 text-gray-500">Loading Images...</div>
+            <div className="text-center py-10 text-gray-500">
+              Loading Images...
+            </div>
           ) : images.length > 0 ? (
             <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-3">
               {images.map((img) => (
@@ -824,6 +908,7 @@ function ImageGalleryModal({ onSelectImage, onClose }) {
                   key={img._id || img.imageUrl}
                   className="relative w-full aspect-square overflow-hidden rounded-lg shadow-md cursor-pointer group"
                   onClick={() => onSelectImage(img.imageUrl)}
+                  title={img.title || "Image"}
                 >
                   <img
                     src={img.imageUrl}
@@ -831,18 +916,23 @@ function ImageGalleryModal({ onSelectImage, onClose }) {
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = "https://via.placeholder.com/150?text=Error";
+                      e.target.src =
+                        "https://via.placeholder.com/150?text=Error";
                     }}
                   />
                   <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <FiCheck size={30} className="text-white bg-blue-600 rounded-full p-1" />
+                    <FiCheck
+                      size={30}
+                      className="text-white bg-blue-600 rounded-full p-1"
+                    />
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="text-center py-10 text-gray-500">
-              No saved images found. Please check the backend API '/api/images'.
+              No saved images found. Try adjusting your search or check the
+              backend API '/api/images'.
             </div>
           )}
         </div>
@@ -880,7 +970,7 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
 
   useEffect(() => {
     // Ensure post object is fully populated if coming from DB (relatedStories need titles)
-    setFormData(post || DEFAULT_POST_STATE); 
+    setFormData(post || DEFAULT_POST_STATE);
   }, [post]);
 
   useEffect(() => {

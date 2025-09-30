@@ -8,12 +8,13 @@ import TwitterNodeList from "./news/TwitterNodeList";
 import FetchTweet from "./news/FetchTweet";
 import NewArticle from "./news/NewArticle";
 import Ft from "./news/Ft";
+import NewsWeb from "./news/NewsWeb";
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<NewDashboard />} />
-      
+      <Route path="/web" element={<NewsWeb />} />
       <Route path="/news" element={<NewsPage />} />
       <Route path="/news-dashboard" element={<NewDashboard />} />
       <Route path="/embed" element={<EmbedSocialPage />} />

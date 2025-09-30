@@ -17,9 +17,9 @@ import {
   FiZap,
   FiMenu,
   FiImage,
-  FiDelete,
   FiEdit,
   FiTrash,
+  FiCode, // New Icon
 } from "react-icons/fi";
 import { Toaster, toast } from "react-hot-toast";
 
@@ -47,6 +47,13 @@ const ALL_CATEGORIES = [
   "Photos",
   "Videos",
   "LifeStyle",
+  // Added tags from the sample JSON for consistency
+  "చైతన్యానంద సరస్వతి",
+  "లైంగిక వేధింపులు",
+  "స్వామీజీ",
+  "ఢిల్లీ పోలీస్",
+  "ఆగ్రా అరెస్టు",
+  "మోసం",
 ];
 
 const DEFAULT_POST_STATE = {
@@ -60,7 +67,7 @@ const DEFAULT_POST_STATE = {
   sourceType: "manual",
   categories: [],
   isPublished: true,
-  type: "full_post",
+  type: "normal_post",
   twitterUrl: "",
   relatedStories: [],
   scheduledFor: null,
@@ -102,6 +109,9 @@ export default function AdminDashboard() {
         return <PostsListPage />;
       case "settings":
         return <SettingsPage />;
+      // --- NEW VIEW CASE ---
+      case "json-parser":
+        return <JsonParserPage />;
       case "dashboard":
       default:
         return <DashboardHomePage />;
@@ -169,6 +179,12 @@ const Sidebar = ({ currentView, setView, isOpen, setIsOpen }) => {
         <nav className="flex-1 p-4 space-y-2">
           <NavItem viewName="dashboard" icon={<FiHome />} text="Dashboard" />
           <NavItem viewName="posts" icon={<FiFileText />} text="Posts" />
+          {/* --- NEW NAV ITEM --- */}
+          <NavItem
+            viewName="json-parser"
+            icon={<FiCode />}
+            text="JSON Parser"
+          />
           <NavItem viewName="settings" icon={<FiSettings />} text="Settings" />
         </nav>
         <div className="p-4 border-t">
@@ -196,6 +212,118 @@ const Header = ({ onMenuClick }) => (
     </div>
   </header>
 );
+
+// --- 🚀🚀 NEW COMPONENT: JSON PARSER PAGE 🚀🚀 ---
+const JsonParserPage = () => {
+  // Default JSON provided in the prompt for easy testing
+//   const defaultJsonString = `{
+//   "title": "ఢిల్లీ స్వామీజీ కేసులో కొత్త విషయాలు: మహిళలతో వాట్సాప్‌ చాట్‌లు బహిర్గతం, దర్యాప్తుకు సహకరించని నిందితుడు",
+//   "summary": "ఢిల్లీ ఆశ్రమంలో మహిళలను లైంగికంగా వేధించిన ఆరోపణలు ఎదుర్కొంటున్న చైతన్యానంద సరస్వతి (పార్థసారథి)ని ఆగ్రాలో అరెస్టు చేశారు. అతని మొబైల్‌లో మహిళలను లోబరుచుకునే ప్రయత్నాలను వెల్లడించే వాట్సాప్‌ చాట్‌లు, ఫోటోలు దొరికాయి. విచారణలో నిందితుడు సహకరించడం లేదని, నకిలీ UN, BRICS రాయబారి కార్డులు కూడా అతని వద్ద లభించాయని పోలీసులు తెలిపారు. బాధితుల్లో ఒకరి తండ్రిని బెదిరించినందుకు అతని అనుచరుడిని కూడా అరెస్టు చేశారు.",
+//   "text": "స్వయం ప్రకటిత దేవుడు చైతన్యానంద సరస్వతి (అలియాస్ పార్థసారథి)పై దర్యాప్తులో కీలక ఆధారాలు వెలుగులోకి వచ్చాయి. ఢిల్లీ ఆశ్రమంలో డజనుకు పైగా మహిళలను లైంగికంగా వేధించిన కేసులో నిందితుడైన ఇతని మొబైల్ ఫోన్ నుండి పోలీసులు అభ్యంతరకరమైన వాట్సాప్ చాట్‌లను సేకరించారు. ఆ చాట్‌లలో మహిళలను పలు ఆశలు చూపించి లోబరుచుకునే ప్రయత్నాలు చేసినట్లు తేలింది. పోలీసులు అతని ఫోన్‌లో పలువురు మహిళా క్యాబిన్ సిబ్బందితో దిగిన ఫోటోలు, అనేక మంది మహిళల సోషల్ మీడియా ప్రొఫైల్ పిక్చర్‌ల స్క్రీన్‌షాట్‌లను కూడా గుర్తించారు... (Full text would go here)",
+//   "tags": [
+//     "చైతన్యానంద సరస్వతి",
+//     "లైంగిక వేధింపులు",
+//     "స్వామీజీ",
+//     "ఢిల్లీ పోలీస్",
+//     "ఆగ్రా అరెస్టు",
+//     "మోసం"
+//   ],
+//   "sourceUrl": "https://ndtv.com/latest-news/new-details-have-surfaced-in-the-probe-against-the-self-styled-godman-accused-of-sexual-harassing-over-a-dozen-women-at-an-ashram-in-delhi-police-have-recovered-several-chats-with-women-from-chaitanyananda-saraswatis-mobile-phone-exposing-his-predatory-nature",
+//   "sourceName": "NDTV",
+//   "parsedAt": "2025-09-30T06:52:25.000Z"
+// }`;
+
+  const [jsonInput, setJsonInput] = useState("");
+  const [parsedData, setParsedData] = useState(null);
+
+  const handleSave = () => {
+    let parsedJson;
+    try {
+      parsedJson = JSON.parse(jsonInput);
+      setParsedData(parsedJson); // Store for display
+    } catch (error) {
+      toast.error("Invalid JSON format. Please check your input.");
+      console.error("JSON Parse Error:", error);
+      return;
+    }
+
+    // Map fields from the parsed JSON to the expected backend schema
+    const newPostPayload = {
+      ...DEFAULT_POST_STATE,
+      title: parsedJson.title || "",
+      summary: parsedJson.summary || "",
+      text: parsedJson.text || "",
+      url: parsedJson.sourceUrl || "", // Map sourceUrl -> url
+      source: parsedJson.sourceName || "Unknown", // Map sourceName -> source
+      // categories: parsedJson.tags || [], // Map tags -> categories
+      sourceType: parsedJson.sourceName ? "scraped" : "manual",
+      // You can add more field mappings here if needed
+    };
+
+    const promise = fetch(`${API_BASE_URL}/post`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newPostPayload),
+    })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || "An unknown error occurred.");
+        return data;
+      });
+
+    toast.promise(promise, {
+      loading: "Saving parsed post...",
+      success: () => {
+        setJsonInput(""); // Clear input on success
+        setParsedData(null);
+        return `Post "${newPostPayload.title}" created successfully!`;
+      },
+      error: (err) => `Error saving post: ${err.message}`,
+    });
+  };
+
+  return (
+    <div>
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">
+        JSON Object Parser
+      </h1>
+      <div className="bg-white rounded-lg shadow p-6">
+        <p className="text-gray-600 mb-4">
+          Paste a valid JSON object below. The tool will parse it and save it as
+          a new post. Ensure the JSON structure matches the required fields
+          (title, summary, text, etc.).
+        </p>
+        <textarea
+          value={jsonInput}
+          onChange={(e) => setJsonInput(e.target.value)}
+          rows="15"
+          className="w-full border rounded-lg p-3 font-mono text-sm bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          placeholder="Paste your JSON here..."
+        />
+        <div className="flex justify-end mt-4">
+          <button
+            onClick={handleSave}
+            disabled={!jsonInput.trim()}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <FiZap size={16} /> Parse & Save Post
+          </button>
+        </div>
+        {parsedData && (
+          <div className="mt-6">
+            <h2 className="font-semibold text-lg text-gray-800 mb-2">
+              Last Parsed Data Preview
+            </h2>
+            <pre className="bg-gray-100 p-4 rounded-lg text-xs overflow-x-auto">
+              {JSON.stringify(parsedData, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+// --- END OF NEW COMPONENT ---
 
 // --- PAGE COMPONENTS ---
 const DashboardHomePage = () => (
@@ -442,7 +570,8 @@ const PostsListPage = () => {
       text: summary,
       categories: ["General"], // Default category
       isBreaking: true, // To signal the backend for a random image
-      imageUrl: `https://www.clipartmax.com/png/middle/104-1041704_breaking-news-image-transparent.png`, // Random image with timestamp to avoid caching
+      imageUrl: `https://m.media-amazon.com/images/I/71GHfGRuWJL._UF1000,1000_QL80_.jpg`, // Random image with timestamp to avoid caching
+      type: "normal_post",
     };
 
     const promise = fetch(`${API_BASE_URL}/post`, {
@@ -807,7 +936,6 @@ const SettingsPage = () => (
 );
 
 // --- IMAGE GALLERY MODAL COMPONENT ---
-
 function ImageGalleryModal({ onSelectImage, onClose }) {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -858,12 +986,12 @@ function ImageGalleryModal({ onSelectImage, onClose }) {
     } else {
       setPage(1);
     }
-  }, [debouncedSearchQuery]);
+  }, [debouncedSearchQuery, fetchImages]);
 
   // Effect to handle page changes after search (if page != 1)
   useEffect(() => {
     fetchImages(page, debouncedSearchQuery);
-  }, [page]);
+  }, [page, fetchImages]);
 
   return (
     <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">

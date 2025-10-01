@@ -19,7 +19,10 @@ import {
   FiImage,
   FiEdit,
   FiTrash,
-  FiCode, // New Icon
+  FiCode,
+  FiBookmark,
+  FiTrendingUp, // New Icon
+  FiTwitter,    // New Icon
 } from "react-icons/fi";
 import { Toaster, toast } from "react-hot-toast";
 
@@ -47,13 +50,6 @@ const ALL_CATEGORIES = [
   "Photos",
   "Videos",
   "LifeStyle",
-  // Added tags from the sample JSON for consistency
-  "చైతన్యానంద సరస్వతి",
-  "లైంగిక వేధింపులు",
-  "స్వామీజీ",
-  "ఢిల్లీ పోలీస్",
-  "ఆగ్రా అరెస్టు",
-  "మోసం",
 ];
 
 const DEFAULT_POST_STATE = {
@@ -72,6 +68,7 @@ const DEFAULT_POST_STATE = {
   relatedStories: [],
   scheduledFor: null,
   isBreaking: false,
+  pinnedIndex: null, // --- PINNING FEATURE ---: New field to hold pin position (0-indexed)
 };
 
 // --- HELPER & HOOKS ---
@@ -100,25 +97,90 @@ function useDebounce(value, delay) {
 
 // --- MAIN DASHBOARD COMPONENT ---
 export default function AdminDashboard() {
-  const [view, setView] = useState("dashboard");
+    const [view, setView] = useState("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // ✅ STATE LIFTED UP: Modal state is now managed here
+  const [editingPost, setEditingPost] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  
+  // ✅ STATE LIFTED UP: This state holds a callback to refresh the posts list after saving
+  const [onSaveSuccessCallback, setOnSaveSuccessCallback] = useState(null);
+
+  // ✅ HANDLER LIFTED UP: Opens the main post modal
+  const handleOpenModal = (post = null, onSaveSuccess = () => {}) => {
+    setEditingPost(post || DEFAULT_POST_STATE);
+    setOnSaveSuccessCallback(() => onSaveSuccess);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingPost(null);
+    setOnSaveSuccessCallback(null);
+  };
+
+  const handleSetImageUrl = (url) => {
+    setEditingPost((prev) => ({ ...prev, imageUrl: url }));
+    setIsGalleryOpen(false);
+  };
+
+  // ✅ HANDLER LIFTED UP: Saves a post (create or update)
+  const handleSave = async (postData) => {
+    const isUpdating = !!postData._id;
+    const url = isUpdating
+      ? `${API_BASE_URL}/post/${postData._id}`
+      : `${API_BASE_URL}/post`;
+    const method = isUpdating ? "PUT" : "POST";
+    const payload = {
+      ...postData,
+      relatedStories: postData.relatedStories?.map((story) => story._id) || [],
+    };
+    
+    const promise = fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || "An unknown error occurred.");
+        return data;
+      });
+
+    toast.promise(promise, {
+      loading: "Saving post...",
+      success: () => {
+        handleCloseModal();
+        if (onSaveSuccessCallback) {
+            onSaveSuccessCallback();
+        }
+        return `Post successfully ${isUpdating ? "updated" : "created"}!`;
+      },
+      error: (err) => `Error saving post: ${err.message}`,
+    });
+  };
 
   const renderView = () => {
     switch (view) {
       case "posts":
-        return <PostsListPage />;
-      case "settings":
-        return <SettingsPage />;
-      // --- NEW VIEW CASE ---
+        return <PostsListPage onOpenModal={handleOpenModal} />;
+      case "sticky-posts": // New View
+        return <StickyPostsPage />;
+      case "fetch-tweet": // New View
+        return <FetchTweetPage onOpenModal={handleOpenModal} />;
       case "json-parser":
         return <JsonParserPage />;
+      case "settings":
+        return <SettingsPage />;
       case "dashboard":
       default:
         return <DashboardHomePage />;
     }
   };
 
-  return (
+return (
     <>
       <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} />
       <div className="flex h-screen bg-gray-100 font-sans">
@@ -133,6 +195,22 @@ export default function AdminDashboard() {
           <div className="p-2 md:p-6 flex-1">{renderView()}</div>
         </main>
       </div>
+
+      {/* ✅ MODALS RENDERED HERE: Modals are now at the top level */}
+      {isModalOpen && (
+        <PostFormModal
+          post={editingPost}
+          onSave={handleSave}
+          onClose={handleCloseModal}
+          onOpenGallery={() => setIsGalleryOpen(true)}
+        />
+      )}
+      {isGalleryOpen && (
+        <ImageGalleryModal
+          onSelectImage={handleSetImageUrl}
+          onClose={() => setIsGalleryOpen(false)}
+        />
+      )}
     </>
   );
 }
@@ -141,14 +219,9 @@ export default function AdminDashboard() {
 const Sidebar = ({ currentView, setView, isOpen, setIsOpen }) => {
   const NavItem = ({ viewName, icon, text }) => (
     <button
-      onClick={() => {
-        setView(viewName);
-        setIsOpen(false);
-      }}
+      onClick={() => { setView(viewName); setIsOpen(false); }}
       className={`flex items-center gap-3 px-3 py-2 rounded w-full text-left font-semibold transition-colors ${
-        currentView === viewName
-          ? "bg-blue-100 text-blue-700"
-          : "text-gray-600 hover:bg-gray-100"
+        currentView === viewName ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100"
       }`}
     >
       {icon} {text}
@@ -156,41 +229,23 @@ const Sidebar = ({ currentView, setView, isOpen, setIsOpen }) => {
   );
   return (
     <>
-      <div
-        onClick={() => setIsOpen(false)}
-        className={`fixed inset-0 bg-black/50 z-20 sm:hidden transition-opacity ${
-          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
-      ></div>
-      <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out sm:relative sm:translate-x-0 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
+      <div onClick={() => setIsOpen(false)} className={`fixed inset-0 bg-black/50 z-20 sm:hidden transition-opacity ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}></div>
+      <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out sm:relative sm:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="text-xl font-bold p-4 border-b flex items-center justify-between">
           <span>NewsAdmin</span>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="sm:hidden text-gray-500 hover:text-gray-800"
-          >
-            &times;
-          </button>
+          <button onClick={() => setIsOpen(false)} className="sm:hidden text-gray-500 hover:text-gray-800">&times;</button>
         </div>
         <nav className="flex-1 p-4 space-y-2">
           <NavItem viewName="dashboard" icon={<FiHome />} text="Dashboard" />
           <NavItem viewName="posts" icon={<FiFileText />} text="Posts" />
-          {/* --- NEW NAV ITEM --- */}
-          <NavItem
-            viewName="json-parser"
-            icon={<FiCode />}
-            text="JSON Parser"
-          />
+          {/* ✅ SIDEBAR UPDATED */}
+          <NavItem viewName="sticky-posts" icon={<FiTrendingUp />} text="Sticky Posts" />
+          <NavItem viewName="fetch-tweet" icon={<FiTwitter />} text="Fetch from Tweet" />
+          <NavItem viewName="json-parser" icon={<FiCode />} text="JSON Parser" />
           <NavItem viewName="settings" icon={<FiSettings />} text="Settings" />
         </nav>
         <div className="p-4 border-t">
-          <button className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100 w-full text-gray-600">
-            <FiLogOut /> Logout
-          </button>
+          <button className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100 w-full text-gray-600"><FiLogOut /> Logout</button>
         </div>
       </aside>
     </>
@@ -198,41 +253,19 @@ const Sidebar = ({ currentView, setView, isOpen, setIsOpen }) => {
 };
 
 const Header = ({ onMenuClick }) => (
-  <header className="flex-shrink-0 bg-white shadow-sm p-4 flex justify-between items-center md:justify-end">
-    <button onClick={onMenuClick} className="sm:hidden p-2 text-gray-600">
-      <FiMenu size={24} />
-    </button>
-    <div className="flex items-center gap-4">
-      <input
-        type="text"
-        placeholder="Search..."
-        className="border rounded-lg px-3 py-2 hidden sm:block"
-      />
-      <FiBell className="text-2xl text-gray-500" />
-    </div>
-  </header>
+    // This component is unchanged
+    <header className="flex-shrink-0 bg-white shadow-sm p-4 flex justify-between items-center md:justify-end">
+        <button onClick={onMenuClick} className="sm:hidden p-2 text-gray-600"><FiMenu size={24} /></button>
+        <div className="flex items-center gap-4">
+            <input type="text" placeholder="Search..." className="border rounded-lg px-3 py-2 hidden sm:block" />
+            <FiBell className="text-2xl text-gray-500" />
+        </div>
+    </header>
 );
+
 
 // --- 🚀🚀 NEW COMPONENT: JSON PARSER PAGE 🚀🚀 ---
 const JsonParserPage = () => {
-  // Default JSON provided in the prompt for easy testing
-//   const defaultJsonString = `{
-//   "title": "ఢిల్లీ స్వామీజీ కేసులో కొత్త విషయాలు: మహిళలతో వాట్సాప్‌ చాట్‌లు బహిర్గతం, దర్యాప్తుకు సహకరించని నిందితుడు",
-//   "summary": "ఢిల్లీ ఆశ్రమంలో మహిళలను లైంగికంగా వేధించిన ఆరోపణలు ఎదుర్కొంటున్న చైతన్యానంద సరస్వతి (పార్థసారథి)ని ఆగ్రాలో అరెస్టు చేశారు. అతని మొబైల్‌లో మహిళలను లోబరుచుకునే ప్రయత్నాలను వెల్లడించే వాట్సాప్‌ చాట్‌లు, ఫోటోలు దొరికాయి. విచారణలో నిందితుడు సహకరించడం లేదని, నకిలీ UN, BRICS రాయబారి కార్డులు కూడా అతని వద్ద లభించాయని పోలీసులు తెలిపారు. బాధితుల్లో ఒకరి తండ్రిని బెదిరించినందుకు అతని అనుచరుడిని కూడా అరెస్టు చేశారు.",
-//   "text": "స్వయం ప్రకటిత దేవుడు చైతన్యానంద సరస్వతి (అలియాస్ పార్థసారథి)పై దర్యాప్తులో కీలక ఆధారాలు వెలుగులోకి వచ్చాయి. ఢిల్లీ ఆశ్రమంలో డజనుకు పైగా మహిళలను లైంగికంగా వేధించిన కేసులో నిందితుడైన ఇతని మొబైల్ ఫోన్ నుండి పోలీసులు అభ్యంతరకరమైన వాట్సాప్ చాట్‌లను సేకరించారు. ఆ చాట్‌లలో మహిళలను పలు ఆశలు చూపించి లోబరుచుకునే ప్రయత్నాలు చేసినట్లు తేలింది. పోలీసులు అతని ఫోన్‌లో పలువురు మహిళా క్యాబిన్ సిబ్బందితో దిగిన ఫోటోలు, అనేక మంది మహిళల సోషల్ మీడియా ప్రొఫైల్ పిక్చర్‌ల స్క్రీన్‌షాట్‌లను కూడా గుర్తించారు... (Full text would go here)",
-//   "tags": [
-//     "చైతన్యానంద సరస్వతి",
-//     "లైంగిక వేధింపులు",
-//     "స్వామీజీ",
-//     "ఢిల్లీ పోలీస్",
-//     "ఆగ్రా అరెస్టు",
-//     "మోసం"
-//   ],
-//   "sourceUrl": "https://ndtv.com/latest-news/new-details-have-surfaced-in-the-probe-against-the-self-styled-godman-accused-of-sexual-harassing-over-a-dozen-women-at-an-ashram-in-delhi-police-have-recovered-several-chats-with-women-from-chaitanyananda-saraswatis-mobile-phone-exposing-his-predatory-nature",
-//   "sourceName": "NDTV",
-//   "parsedAt": "2025-09-30T06:52:25.000Z"
-// }`;
-
   const [jsonInput, setJsonInput] = useState("");
   const [parsedData, setParsedData] = useState(null);
 
@@ -255,9 +288,7 @@ const JsonParserPage = () => {
       text: parsedJson.text || "",
       url: parsedJson.sourceUrl || "", // Map sourceUrl -> url
       source: parsedJson.sourceName || "Unknown", // Map sourceName -> source
-      // categories: parsedJson.tags || [], // Map tags -> categories
       sourceType: parsedJson.sourceName ? "scraped" : "manual",
-      // You can add more field mappings here if needed
     };
 
     const promise = fetch(`${API_BASE_URL}/post`, {
@@ -325,6 +356,185 @@ const JsonParserPage = () => {
 };
 // --- END OF NEW COMPONENT ---
 
+
+// ✅ NEW COMPONENT: Sticky Posts Page
+const StickyPostsPage = () => {
+    const [stickyPosts, setStickyPosts] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchStickyPosts = useCallback(async () => {
+        setLoading(true);
+        try {
+            // NOTE: This assumes your backend API supports the `pinnedOnly=true` query parameter.
+            // You may need to add this logic to your `/api/posts` endpoint on the server.
+            const res = await fetch(`${API_BASE_URL}/posts?pinnedOnly=true`);
+            const data = await res.json();
+            if (data.status === "success") {
+                // The backend already sorts by pinnedIndex, but we can re-sort just in case.
+                const sorted = data.posts.sort((a, b) => a.pinnedIndex - b.pinnedIndex);
+                setStickyPosts(sorted);
+            } else {
+                throw new Error(data.message || "Failed to fetch sticky posts");
+            }
+        } catch (err) {
+            toast.error(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchStickyPosts();
+    }, [fetchStickyPosts]);
+
+    const handleUnpin = (post) => {
+        if (!window.confirm(`Are you sure you want to unpin "${post.title}"?`)) return;
+        
+        const promise = fetch(`${API_BASE_URL}/post/${post._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...post, pinnedIndex: null }),
+        })
+        .then(res => { if (!res.ok) throw new Error("Unpinning failed"); });
+
+        toast.promise(promise, {
+            loading: "Unpinning post...",
+            success: () => {
+                fetchStickyPosts(); // Re-fetch the list
+                return "Post unpinned successfully!";
+            },
+            error: (err) => `Error: ${err.message}`,
+        });
+    };
+
+    return (
+        <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Sticky Posts</h1>
+            <div className="bg-white rounded-lg shadow">
+                <div className="p-4 border-b">
+                    <h3 className="font-semibold text-lg text-gray-800">All Pinned Items</h3>
+                    <p className="text-sm text-gray-500">These posts are fixed to specific positions in the user-facing feed.</p>
+                </div>
+                {loading ? <div className="p-8 text-center text-gray-500">Loading...</div> :
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
+                            <tr>
+                                <th className="px-4 py-3 w-16">Position</th>
+                                <th className="px-4 py-3">Title</th>
+                                <th className="px-4 py-3">Source</th>
+                                <th className="px-4 py-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {stickyPosts.map((post) => (
+                                <tr key={post._id} className="border-t hover:bg-gray-50">
+                                    <td className="px-4 py-3 font-bold text-lg text-blue-600">#{post.pinnedIndex + 1}</td>
+                                    <td className="px-4 py-3 max-w-sm">
+                                        <p className="font-medium text-gray-800 truncate">{post.title}</p>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className="bg-gray-200 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">{post.source}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-right">
+                                        <button onClick={() => handleUnpin(post)} className="px-3 py-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50 font-semibold">
+                                            Unpin
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                }
+                { !loading && stickyPosts.length === 0 && <div className="p-8 text-center text-gray-500">No sticky posts found.</div>}
+            </div>
+        </div>
+    );
+};
+
+
+// ✅ NEW COMPONENT: Fetch from Tweet Page
+const FetchTweetPage = ({ onOpenModal }) => {
+    const [tweetId, setTweetId] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleInputChange = (event) => {
+        const value = event.target.value;
+        const regex = /(?:twitter\.com|x\.com)\/[a-zA-Z0-9_]+\/status\/(\d+)/;
+        const match = value.match(regex);
+        setTweetId(match ? match[1] : value);
+    };
+
+    const handleFetchTweet = async () => {
+        if (!tweetId) {
+            toast.error("Please provide a Tweet ID or URL.");
+            return;
+        }
+        setIsLoading(true);
+
+        const promise = fetch(`${API_BASE_URL}/formatted-tweet`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tweet_ids: [tweetId] }),
+        })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok) throw new Error(data.error || "Failed to fetch tweet.");
+            if (!data.successfulPosts || data.successfulPosts.length === 0) {
+                throw new Error("Tweet not found or could not be processed.");
+            }
+            return data.successfulPosts[0];
+        });
+
+        toast.promise(promise, {
+            loading: "Fetching tweet data...",
+            success: (fetchedPost) => {
+                // On success, open the main modal with the fetched data
+                onOpenModal(fetchedPost);
+                setTweetId(""); // Clear input
+                return "Tweet data loaded successfully!";
+            },
+            error: (err) => `Error: ${err.message}`,
+        }).finally(() => {
+            setIsLoading(false);
+        });
+    };
+
+    return (
+        <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Fetch from Tweet</h1>
+            <div className="bg-white rounded-lg shadow p-6 max-w-2xl mx-auto">
+                <p className="text-gray-600 mb-4">
+                    Paste a Tweet URL or ID below. The system will fetch its content and open the post editor for you to review and save.
+                </p>
+                <div className="space-y-4">
+                    <div>
+                        <label htmlFor="tweetId" className="block text-sm font-medium text-gray-700 mb-1">
+                            Tweet ID or URL
+                        </label>
+                        <input
+                            id="tweetId"
+                            type="text"
+                            value={tweetId}
+                            onChange={handleInputChange}
+                            placeholder="e.g., 1968713335798390839 or paste URL"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                    <button
+                        onClick={handleFetchTweet}
+                        disabled={isLoading}
+                        className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                    >
+                        {isLoading ? "Fetching..." : <> <FiTwitter/> Fetch & Edit </>}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+
 // --- PAGE COMPONENTS ---
 const DashboardHomePage = () => (
   <div>
@@ -363,7 +573,7 @@ const PostsListPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [editingPost, setEditingPost] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false); // New state for gallery
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [quickPostText, setQuickPostText] = useState("");
   const [isPublishingQuick, setIsPublishingQuick] = useState(false);
   const [filters, setFilters] = useState({ source: "", category: "" });
@@ -435,7 +645,6 @@ const PostsListPage = () => {
     setEditingPost(null);
   };
 
-  // New handler for setting image URL from the gallery
   const handleSetImageUrl = (url) => {
     setEditingPost((prev) => ({ ...prev, imageUrl: url }));
     setIsGalleryOpen(false);
@@ -470,6 +679,58 @@ const PostsListPage = () => {
       },
       error: (err) => `Error saving post: ${err.message}`,
     });
+  };
+
+  // --- PINNING FEATURE ---: New handler to pin or unpin a post
+  const handlePinToggle = (post) => {
+    const isCurrentlyPinned = post.pinnedIndex !== null && post.pinnedIndex > -1;
+
+    const performUpdate = (updatedPost) => {
+      const promise = fetch(`${API_BASE_URL}/post/${updatedPost._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedPost),
+      })
+        .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          if (!ok) throw new Error(data.error || "Update failed.");
+          return data;
+        });
+
+      toast.promise(promise, {
+        loading: "Updating pin status...",
+        success: () => {
+          fetchPosts(page, filters); // Re-fetch to see the change
+          return "Post pin status updated!";
+        },
+        error: (err) => `Error: ${err.message}`,
+      });
+    };
+
+    if (isCurrentlyPinned) {
+      if (
+        window.confirm(
+          `This post is pinned at position ${
+            post.pinnedIndex + 1
+          }. Do you want to unpin it?`
+        )
+      ) {
+        performUpdate({ ...post, pinnedIndex: null });
+      }
+    } else {
+      const positionStr = window.prompt(
+        "Enter pin position (e.g., 1, 2, 3...). The post will be stuck at this position."
+      );
+      if (positionStr === null) return; // User cancelled
+
+      const position = parseInt(positionStr, 10);
+      if (!isNaN(position) && position > 0) {
+        // Convert to 0-based index for backend consistency
+        performUpdate({ ...post, pinnedIndex: position - 1 });
+      } else {
+        toast.error("Invalid position. Please enter a positive number.");
+      }
+    }
   };
 
   const handleDelete = async (postId) => {
@@ -598,7 +859,6 @@ const PostsListPage = () => {
       .finally(() => setIsPublishingQuick(false));
   };
 
-  // ✅ --- NEW: HANDLER FOR SENDING GLOBAL NOTIFICATION ---
   const handleSendGlobalNotification = async (postId, postTitle) => {
     if (
       !window.confirm(
@@ -733,7 +993,16 @@ const PostsListPage = () => {
             ) : (
               posts.map((post) => (
                 <div key={post._id} className="border-b p-4 space-y-2">
-                  <p className="font-semibold text-gray-800">{post.title}</p>
+                  <p className="font-semibold text-gray-800 flex items-center gap-2">
+                    {/* --- PINNING FEATURE ---: Show pin icon on mobile view title */}
+                    {post.pinnedIndex != null && (
+                      <FiBookmark
+                        className="text-yellow-600 flex-shrink-0"
+                        title={`Pinned at #${post.pinnedIndex + 1}`}
+                      />
+                    )}
+                    <span>{post.title}</span>
+                  </p>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                     <span className="bg-gray-200 text-gray-800 px-2 py-0.5 rounded-full font-medium">
                       {post.source}
@@ -753,6 +1022,22 @@ const PostsListPage = () => {
                     {post.categories?.join(", ") || "No categories"}
                   </p>
                   <div className="flex justify-end gap-2 pt-2">
+                    {/* --- PINNING FEATURE ---: Pin button for mobile view */}
+                    <button
+                      onClick={() => handlePinToggle(post)}
+                      className={`px-3 py-1 rounded-md border font-semibold text-sm flex items-center gap-1 ${
+                        post.pinnedIndex != null
+                          ? "border-yellow-400 text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
+                          : "border-gray-200 text-gray-600 hover:bg-gray-100"
+                      }`}
+                      title={
+                        post.pinnedIndex != null
+                          ? `Pinned at #${post.pinnedIndex + 1}`
+                          : "Pin Post"
+                      }
+                    >
+                      <FiBookmark />
+                    </button>
                     <button
                       onClick={() => handleOpenModal(post)}
                       className="px-3 py-1 rounded-md border font-semibold text-gray-700 hover:bg-gray-100 text-sm"
@@ -810,9 +1095,12 @@ const PostsListPage = () => {
                 posts.map((post) => (
                   <tr
                     key={post._id}
+                    // --- PINNING FEATURE ---: Conditional styling for pinned and selected posts
                     className={`border-t hover:bg-gray-50 ${
-                      selectedPosts.has(post._id) ? "bg-blue-50" : ""
-                    }`}
+                      post.pinnedIndex != null
+                        ? "bg-yellow-50/70 hover:bg-yellow-100/70"
+                        : ""
+                    } ${selectedPosts.has(post._id) ? "!bg-blue-50" : ""}`}
                   >
                     <td className="px-4 py-3">
                       <input
@@ -822,8 +1110,15 @@ const PostsListPage = () => {
                       />
                     </td>
                     <td className="px-4 py-3 max-w-sm">
-                      <p className="font-medium text-gray-800 truncate">
-                        {post.title}
+                      {/* --- PINNING FEATURE ---: Add pin icon next to title if pinned */}
+                      <p className="font-medium text-gray-800 truncate flex items-center gap-2">
+                        {post.pinnedIndex != null && (
+                          <FiBookmark
+                            className="text-yellow-600 flex-shrink-0"
+                            title={`Pinned at #${post.pinnedIndex + 1}`}
+                          />
+                        )}
+                        <span>{post.title}</span>
                       </p>
                       <p className="text-gray-500 truncate">{post.summary}</p>
                     </td>
@@ -851,11 +1146,26 @@ const PostsListPage = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
+                        {/* --- PINNING FEATURE ---: Pin button for desktop view */}
+                        <button
+                          onClick={() => handlePinToggle(post)}
+                          className={`px-3 py-1 rounded-md border font-semibold ${
+                            post.pinnedIndex != null
+                              ? "border-yellow-400 text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
+                              : "border-gray-200 text-gray-700 hover:bg-gray-100"
+                          }`}
+                          title={
+                            post.pinnedIndex != null
+                              ? `Pinned at #${post.pinnedIndex + 1}`
+                              : "Pin Post"
+                          }
+                        >
+                          <FiBookmark />
+                        </button>
                         <button
                           onClick={() => handleOpenModal(post)}
                           className="px-3 py-1 rounded-md border font-semibold text-gray-700 hover:bg-gray-100"
                         >
-                          {/* Edit */}
                           <FiEdit />
                         </button>
                         <button
@@ -906,7 +1216,7 @@ const PostsListPage = () => {
           post={editingPost}
           onSave={handleSave}
           onClose={handleCloseModal}
-          onOpenGallery={() => setIsGalleryOpen(true)} // Pass handler to open gallery
+          onOpenGallery={() => setIsGalleryOpen(true)}
         />
       )}
       {isGalleryOpen && (
@@ -978,9 +1288,7 @@ function ImageGalleryModal({ onSelectImage, onClose }) {
     }
   }, []);
 
-  // Effect to handle page changes OR debounced search query changes
   useEffect(() => {
-    // If search query changes, reset to page 1 for new search results
     if (page === 1) {
       fetchImages(1, debouncedSearchQuery);
     } else {
@@ -988,7 +1296,6 @@ function ImageGalleryModal({ onSelectImage, onClose }) {
     }
   }, [debouncedSearchQuery, fetchImages]);
 
-  // Effect to handle page changes after search (if page != 1)
   useEffect(() => {
     fetchImages(page, debouncedSearchQuery);
   }, [page, fetchImages]);
@@ -1009,7 +1316,6 @@ function ImageGalleryModal({ onSelectImage, onClose }) {
           </button>
         </div>
 
-        {/* Search Bar */}
         <div className="p-4 border-b">
           <div className="relative">
             <FiSearch className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" />
@@ -1022,7 +1328,6 @@ function ImageGalleryModal({ onSelectImage, onClose }) {
             />
           </div>
         </div>
-        {/* End Search Bar */}
 
         <div className="flex-1 p-4 overflow-y-auto">
           {loading ? (
@@ -1097,7 +1402,6 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   useEffect(() => {
-    // Ensure post object is fully populated if coming from DB (relatedStories need titles)
     setFormData(post || DEFAULT_POST_STATE);
   }, [post]);
 
@@ -1297,7 +1601,7 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
             rows={6}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ImageUrlInput /> {/* Replaced FormInput with new component */}
+            <ImageUrlInput />
             <FormInput
               label="Video URL"
               name="videoUrl"
@@ -1360,24 +1664,58 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
               ))}
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">
-              Schedule Publication
-            </label>
-            <input
-              type="datetime-local"
-              name="scheduledFor"
-              value={
-                formData.scheduledFor ? formData.scheduledFor.slice(0, 16) : ""
-              }
-              onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2 bg-gray-50"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Leave blank to publish immediately. Requires backend cron job to
-              work.
-            </p>
+          {/* --- PINNING FEATURE ---: Form fields for scheduling and pinning */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Schedule Publication
+              </label>
+              <input
+                type="datetime-local"
+                name="scheduledFor"
+                value={
+                  formData.scheduledFor
+                    ? formData.scheduledFor.slice(0, 16)
+                    : ""
+                }
+                onChange={handleChange}
+                className="w-full border rounded-lg px-3 py-2 bg-gray-50"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave blank to publish immediately.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Pin to Position
+              </label>
+              <input
+                type="number"
+                name="pinnedIndex"
+                placeholder="e.g., 1, 2, 3..."
+                value={
+                  formData.pinnedIndex !== null ? formData.pinnedIndex + 1 : ""
+                } // Display as 1-based index
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    // Store as 0-based index or null
+                    pinnedIndex:
+                      val === ""
+                        ? null
+                        : Math.max(0, parseInt(val, 10) - 1),
+                  }));
+                }}
+                min="1"
+                className="w-full border rounded-lg px-3 py-2 bg-gray-50"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave blank to unpin. Pinned posts stick to the top.
+              </p>
+            </div>
           </div>
+
           <div className="space-y-3 pt-2">
             <label className="block text-sm font-medium text-gray-600">
               Related Stories

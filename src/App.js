@@ -8,13 +8,15 @@ import TwitterNodeList from "./news/TwitterNodeList";
 import FetchTweet from "./news/FetchTweet";
 import NewArticle from "./news/NewArticle";
 import Ft from "./news/Ft";
+import ANmockup from "./news/ANmockup";
+import NewsParse from "./news/NewsParse";
 import NewsWeb from "./news/NewsWeb";
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<NewDashboard />} />
-      <Route path="/web" element={<NewsWeb />} />
+      <Route path="/" element={<NewsWeb />} />
+      
       <Route path="/news" element={<NewsPage />} />
       <Route path="/news-dashboard" element={<NewDashboard />} />
       <Route path="/embed" element={<EmbedSocialPage />} />
@@ -22,6 +24,9 @@ function App() {
       <Route path="/ft" element={<FetchTweet />} />
       <Route path="/ft1" element={<Ft />} />
       <Route path="/new" element={<NewArticle />} />
+      <Route path="/web" element={<NewsWeb />} />
+      <Route path="/an" element={<ANmockup />} />
+      <Route path="/np" element={<NewsParse />} />
             
       <Route path="/news/list" element={<ListNews />} />
       <Route path="/ArticlesTable" element={<ArticlesTable />} />

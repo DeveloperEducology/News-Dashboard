@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 
 // --- API SETUP ---
 const API_BASE_URL = "https://twitterapi-node.onrender.com/api";
-const POSTS_PER_PAGE = 10; 
+const POSTS_PER_PAGE = 10;
 
 // --- MOCK TOAST ---
 const toast = {
@@ -10,7 +10,6 @@ const toast = {
 };
 
 // --- SVG ICONS ---
-// (All SVG components remain the same as in your original code)
 const NewspaperIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h4M4 22a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2M8 6h8M8 10h8M8 14h4" /></svg>);
 const SearchIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>);
 const BoltIcon = () => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>);
@@ -37,46 +36,58 @@ const NewsListItem = ({ article }) => {
     return source.charAt(0).toUpperCase() + source.slice(1);
   };
 
-  return (
-    <article className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col sm:flex-row items-start gap-5 p-4 transition-shadow hover:shadow-md">
-      <div className="flex-shrink-0 w-full sm:w-48">
-        <a href={article.url} target="_blank" rel="noopener noreferrer">
-          <img src={article.imageUrl || "https://placehold.co/400x300/e2e8f0/e2e8f0?text=."} alt={article.title} loading="lazy" className="w-full h-40 sm:h-32 object-cover rounded-md" />
-        </a>
-      </div>
-      <div className="flex flex-col flex-grow">
-        <h3 className="mb-1 text-xl font-bold leading-tight text-gray-900">
-          <a href={article.url} target="_blank" rel="noopener noreferrer" className="hover:text-blue-800 transition-colors duration-300">{article.title}</a>
-        </h3>
-        <div className="text-xs text-gray-500 mb-3">
-          <span>short by / </span><time>{formatDate(article.publishedAt)}</time>
-        </div>
-        <p className="text-gray-700 text-sm leading-relaxed mb-4 flex-grow">{article.summary}</p>
-        <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-blue-700 hover:underline self-start">
-          read more at {formatSourceName(article.source)}
-        </a>
-      </div>
-    </article>
-  );
-};
-
-const TwitterEmbedCard = ({ article }) => {
   useEffect(() => {
-    // This ensures that when new tweet embeds are added to the DOM,
-    // the Twitter script processes them.
-    if (window.twttr && window.twttr.widgets) {
+    // If a twitterUrl exists for this article, tell the Twitter widget script
+    // to render any new embeds on the page.
+    if (article.twitterUrl && window.twttr && window.twttr.widgets) {
       window.twttr.widgets.load();
     }
   }, [article.twitterUrl]);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex justify-center">
-      <blockquote className="twitter-tweet" data-media-max-width="560">
-        <a href={article.twitterUrl}>Loading Tweet...</a>
-      </blockquote>
-    </div>
+    <article className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden p-4 flex flex-col transition-shadow hover:shadow-md">
+      {/* Main content section */}
+      <div className="flex flex-col sm:flex-row items-start gap-5 w-full">
+        <div className="flex-shrink-0 w-full sm:w-48">
+          <a href={article.url} target="_blank" rel="noopener noreferrer">
+            <img
+              src={article.imageUrl || "https://placehold.co/400x300/e2e8f0/e2e8f0?text=."}
+              alt={article.title}
+              loading="lazy"
+              className="w-full h-40 sm:h-32 object-cover rounded-md"
+            />
+          </a>
+        </div>
+        <div className="flex flex-col flex-grow">
+          <h3 className="mb-1 text-xl font-bold leading-tight text-gray-900">
+            <a href={article.url} target="_blank" rel="noopener noreferrer" className="hover:text-blue-800 transition-colors duration-300">
+              {article.title}
+            </a>
+          </h3>
+          <div className="text-xs text-gray-500 mb-3">
+            <span>short by / </span><time>{formatDate(article.publishedAt)}</time>
+          </div>
+          <p className="text-gray-700 text-sm leading-relaxed mb-4 flex-grow">
+            {article.summary}
+          </p>
+          <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-blue-700 hover:underline self-start">
+            read more at {formatSourceName(article.source)}
+          </a>
+        </div>
+      </div>
+
+      {/* Conditionally rendered Twitter embed section */}
+      {article.twitterUrl && (
+        <div className="mt-4 pt-4 border-t border-gray-200 w-full flex justify-center">
+          <blockquote className="twitter-tweet" data-media-max-width="560">
+            <a href={article.twitterUrl}>Loading Tweet...</a>
+          </blockquote>
+        </div>
+      )}
+    </article>
   );
 };
+
 
 // --- MAIN APP COMPONENT ---
 
@@ -96,7 +107,7 @@ export default function App() {
     const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
     setCurrentDate(now.toLocaleDateString("en-US", options));
 
-    // Load Twitter's widget script once
+    // Load Twitter's widget script once for the entire app
     const script = document.createElement("script");
     script.src = "https://platform.twitter.com/widgets.js";
     script.async = true;
@@ -246,13 +257,9 @@ export default function App() {
               ) : posts.length > 0 ? (
                 <>
                   <div className="space-y-4">
-                    {posts.map((article) => {
-                      if (article.twitterUrl) {
-                        return <TwitterEmbedCard key={article.twitterUrl} article={article} />;
-                      } else {
-                        return <NewsListItem key={article._id?.$oid || article.url} article={article} />;
-                      }
-                    })}
+                    {posts.map((article) => (
+                      <NewsListItem key={article._id?.$oid || article.url} article={article} />
+                    ))}
                   </div>
                   {page < totalPages && (
                      <div className="mt-8 text-center">

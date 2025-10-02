@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 // --- API SETUP ---
 // In a real application, this would be in a separate file.
 const API_BASE_URL = "https://twitterapi-node.onrender.com/api";
-const POSTS_PER_PAGE = 8; // Number of posts per page, excluding the hero article.
+const POSTS_PER_PAGE = 10; // Number of posts to fetch per page/load.
 
 // A mock function to simulate toast notifications.
 // In a real app, you would import this from a library like 'react-toastify'.
@@ -86,52 +86,6 @@ const SunIcon = () => (
     <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
   </svg>
 );
-const EyeIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    fill="currentColor"
-    viewBox="0 0 16 16"
-  >
-    <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.816 1.097-2.016 2.22-3.41 2.895C9.928 11.72 8.13 12.5 6 12.5c-2.13 0-3.879-1.168-5.168-2.457A13.133 13.133 0 0 1 1.172 8z" />
-    <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
-  </svg>
-);
-const FireIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="w-5 h-5"
-  >
-    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5A7.5 7.5 0 0 1 12 20v-5.5Z" />
-    <path d="M12 20a2 2 0 0 0 2-2v-5.5" />
-  </svg>
-);
-const MailIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="w-5 h-5"
-  >
-    <rect width="20" height="16" x="2" y="4" rx="2" />
-    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-  </svg>
-);
 const FacebookIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -178,27 +132,13 @@ const YoutubeIcon = () => (
 );
 
 // --- DATA MAPPING & UTILITIES ---
-const categoryColorMap = {
-  Technology: "bg-green-100 text-green-800",
-  Politics: "bg-blue-100 text-blue-800",
-  Sports: "bg-red-100 text-red-800",
-  Business: "bg-yellow-100 text-yellow-800",
-  Health: "bg-indigo-100 text-indigo-800",
-  Entertainment: "bg-pink-100 text-pink-800",
-  World: "bg-sky-100 text-sky-800",
-  National: "bg-orange-100 text-orange-800",
-  Environment: "bg-emerald-100 text-emerald-800",
-  Education: "bg-purple-100 text-purple-800",
-  Default: "bg-gray-100 text-gray-800",
-};
-
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
 
-  // API sometimes returns { $date: "..." }
-  const actualDate = typeof dateString === "object" && dateString.$date 
-    ? dateString.$date 
-    : dateString;
+  const actualDate =
+    typeof dateString === "object" && dateString.$date
+      ? dateString.$date
+      : dateString;
 
   const date = new Date(actualDate);
   if (isNaN(date)) return "Invalid Date";
@@ -212,34 +152,29 @@ const formatDate = (dateString) => {
 
 // --- REUSABLE COMPONENTS ---
 
-const NewsCard = ({ article }) => {
-  const categoryClass =
-    categoryColorMap[article.topCategory] || categoryColorMap["Default"];
+const NewsListItem = ({ article }) => {
+  const formatSourceName = (source) => {
+    if (!source) return 'the source';
+    return source.charAt(0).toUpperCase() + source.slice(1);
+  };
+
   return (
-    <article className="bg-white rounded-xl shadow-md overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl group flex flex-col">
-      <div className="h-48 overflow-hidden">
-        <img
-          src={
-            article.imageUrl ||
-            "https://placehold.co/600x400/e2e8f0/e2e8f0?text=."
-          }
-          alt={article.title}
-          loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+    <article className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col sm:flex-row items-start gap-5 p-4 transition-shadow hover:shadow-md">
+      <div className="flex-shrink-0 w-full sm:w-48">
+        <a href={article.url} target="_blank" rel="noopener noreferrer">
+          <img
+            src={
+              article.imageUrl ||
+              "https://placehold.co/400x300/e2e8f0/e2e8f0?text=."
+            }
+            alt={article.title}
+            loading="lazy"
+            className="w-full h-40 sm:h-32 object-cover rounded-md"
+          />
+        </a>
       </div>
-      <div className="p-6 flex flex-col flex-grow">
-        <div className="flex items-center gap-2 mb-3">
-          <span
-            className={`px-2 py-1 text-xs font-semibold uppercase rounded-full ${categoryClass}`}
-          >
-            {article.topCategory || "General"}
-          </span>
-          <time className="text-gray-500 text-xs">
-            {formatDate(article.publishedAt)}
-          </time>
-        </div>
-        <h3 className="mb-2 text-lg font-bold leading-tight text-gray-800 flex-grow">
+      <div className="flex flex-col flex-grow">
+        <h3 className="mb-1 text-xl font-bold leading-tight text-gray-900">
           <a
             href={article.url}
             target="_blank"
@@ -249,49 +184,23 @@ const NewsCard = ({ article }) => {
             {article.title}
           </a>
         </h3>
-        <p className="text-gray-600 text-sm leading-relaxed mt-2">
-          {article.summary.substring(0, 100)}...
+        <div className="text-xs text-gray-500 mb-3">
+          <span>short by / </span>
+          <time>{formatDate(article.publishedAt)}</time>
+        </div>
+        <p className="text-gray-700 text-sm leading-relaxed mb-4 flex-grow">
+          {article.summary}
         </p>
+        <a
+          href={article.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-semibold text-blue-700 hover:underline self-start"
+        >
+          read more at {formatSourceName(article.source)}
+        </a>
       </div>
     </article>
-  );
-};
-
-const SectionHeader = ({ title }) => (
-  <div className="flex items-center gap-4 mb-8">
-    <h2 className="font-serif text-3xl md:text-4xl font-bold text-blue-900">
-      {title}
-    </h2>
-    <span className="flex-1 h-0.5 bg-gradient-to-r from-amber-400"></span>
-  </div>
-);
-
-const Pagination = ({ page, totalPages, setPage }) => {
-  const handlePrev = () => setPage((p) => Math.max(1, p - 1));
-  const handleNext = () => setPage((p) => Math.min(totalPages, p + 1));
-
-  if (totalPages <= 1) return null;
-
-  return (
-    <div className="flex justify-center items-center gap-4 mt-8">
-      <button
-        onClick={handlePrev}
-        disabled={page === 1}
-        className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Previous
-      </button>
-      <span className="text-sm text-gray-700">
-        Page {page} of {totalPages}
-      </span>
-      <button
-        onClick={handleNext}
-        disabled={page === totalPages}
-        className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Next
-      </button>
-    </div>
   );
 };
 
@@ -342,14 +251,13 @@ export default function App() {
     fetchSources();
   }, []);
 
-  // Fetch posts based on page and filters
+  // Centralized data fetching function
   const fetchPosts = useCallback(async (pageNum, currentFilters) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
         page: pageNum,
-        // Fetch one extra post for the hero article section
-        limit: POSTS_PER_PAGE + 1,
+        limit: POSTS_PER_PAGE,
       });
       if (currentFilters.source) {
         params.append("source", currentFilters.source);
@@ -365,20 +273,25 @@ export default function App() {
       const data = await res.json();
 
       if (data.status === "success") {
-        setPosts(data.posts || []);
         setTotalPages(data.totalPages || 1);
+        if (pageNum === 1) {
+          setPosts(data.posts || []); // Replace posts on first page/filter change
+        } else {
+          setPosts((prevPosts) => [...prevPosts, ...(data.posts || [])]); // Append for "Load More"
+        }
       } else {
         throw new Error(data.message || "Failed to fetch posts");
       }
     } catch (err) {
       console.error("Error fetching posts:", err);
       toast.error("Error fetching posts.");
-      setPosts([]); // Clear posts on error to avoid showing stale data
+      setPosts([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Effect to fetch posts when page or filters change
   useEffect(() => {
     fetchPosts(page, filters);
   }, [page, filters, fetchPosts]);
@@ -393,64 +306,32 @@ export default function App() {
     setPage(1);
     setFilters({ source: "", category: "" });
   };
+  
+  const handleLoadMore = () => {
+    if (page < totalPages && !loading) {
+      setPage(prevPage => prevPage + 1);
+    }
+  };
 
   const navLinks = [
-    "Home",
-    "Politics",
-    "Technology",
-    "Sports",
-    "Business",
-    "Health",
-    "Entertainment",
-    "World",
+    "Home", "Politics", "Technology", "Sports", "Business", "Health", "Entertainment", "World",
   ];
   const tickerItems = [
     "Major breakthrough in renewable energy technology announced...",
     "Global climate summit reaches historic agreement...",
     "Tech giants announce new privacy initiatives...",
   ];
-
-  const heroArticle = posts.length > 0 ? posts[0] : null;
-  const remainingArticles = posts.length > 0 ? posts.slice(1) : [];
-  const categoriesForFilter = [
-    ...new Set(
-      posts
-        .map((p) => p.topCategory)
-        .filter(Boolean)
-        .sort()
-    ),
+  const ALL_CATEGORIES = [
+    "General", "Politics", "Astrology", "Sports", "Entertainment", "Technology", "Business", "Education",
+    "Health", "Science", "International", "National", "Crime", "Telangana", "AndhraPradesh", "Viral", "Photos", "Videos", "LifeStyle",
   ];
 
-
-
-  const ALL_CATEGORIES = [
-  "General",
-  "Politics",
-  "Astrology",
-  "Sports",
-  "Entertainment",
-  "Technology",
-  "Business",
-  "Education",
-  "Health",
-  "Science",
-  "International",
-  "National",
-  "Crime",
-  "Telangana",
-  "AndhraPradesh",
-  "Viral",
-  "Photos",
-  "Videos",
-  "LifeStyle",
-  
-];
-
   return (
-    <div className="bg-gray-50 font-sans text-gray-800">
+    <div className="bg-gray-100 font-sans text-gray-800">
       <style>{`.animate-ticker { animation: ticker 60s linear infinite; } @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-150%); } }`}</style>
 
-      <header className="bg-white shadow-sm  top-0 z-50" role="banner">
+      <header className="bg-white shadow-sm top-0 z-50" role="banner">
+        {/* Header content remains the same */}
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center py-2 border-b border-gray-200 text-xs text-gray-500">
             <div className="flex items-center gap-4">
@@ -460,34 +341,10 @@ export default function App() {
               </span>
             </div>
             <div className="hidden md:flex items-center gap-2">
-              <a
-                href="#"
-                aria-label="Facebook"
-                className="p-2 rounded-full hover:bg-gray-100"
-              >
-                <FacebookIcon />
-              </a>
-              <a
-                href="#"
-                aria-label="Twitter"
-                className="p-2 rounded-full hover:bg-gray-100"
-              >
-                <TwitterIcon />
-              </a>
-              <a
-                href="#"
-                aria-label="Instagram"
-                className="p-2 rounded-full hover:bg-gray-100"
-              >
-                <InstagramIcon />
-              </a>
-              <a
-                href="#"
-                aria-label="YouTube"
-                className="p-2 rounded-full hover:bg-gray-100"
-              >
-                <YoutubeIcon />
-              </a>
+              <a href="#" aria-label="Facebook" className="p-2 rounded-full hover:bg-gray-100"><FacebookIcon /></a>
+              <a href="#" aria-label="Twitter" className="p-2 rounded-full hover:bg-gray-100"><TwitterIcon /></a>
+              <a href="#" aria-label="Instagram" className="p-2 rounded-full hover:bg-gray-100"><InstagramIcon /></a>
+              <a href="#" aria-label="YouTube" className="p-2 rounded-full hover:bg-gray-100"><YoutubeIcon /></a>
             </div>
           </div>
           <div className="flex items-center justify-between py-4">
@@ -495,9 +352,7 @@ export default function App() {
               <h1 className="font-serif text-3xl font-bold text-blue-900 flex items-center gap-2">
                 <NewspaperIcon /> NewsHub
               </h1>
-              <p className="text-xs text-gray-500 italic -mt-1">
-                Truth in Every Story
-              </p>
+              <p className="text-xs text-gray-500 italic -mt-1">Truth in Every Story</p>
             </div>
             <div className="hidden lg:block">
               <div className="bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 font-medium text-center w-[728px] h-[90px]">
@@ -505,416 +360,166 @@ export default function App() {
                 <p className="text-sm">728 x 90</p>
               </div>
             </div>
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="lg:hidden z-20"
-              aria-label="Toggle navigation"
-              aria-expanded={isMenuOpen}
-            >
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="lg:hidden z-20" aria-label="Toggle navigation" aria-expanded={isMenuOpen}>
               <div className="space-y-1.5">
-                <span
-                  className={`block w-6 h-0.5 bg-gray-700 transition-transform duration-300 ${
-                    isMenuOpen ? "rotate-45 translate-y-2" : ""
-                  }`}
-                ></span>
-                <span
-                  className={`block w-6 h-0.5 bg-gray-700 transition-opacity duration-300 ${
-                    isMenuOpen ? "opacity-0" : ""
-                  }`}
-                ></span>
-                <span
-                  className={`block w-6 h-0.5 bg-gray-700 transition-transform duration-300 ${
-                    isMenuOpen ? "-rotate-45 -translate-y-2" : ""
-                  }`}
-                ></span>
+                <span className={`block w-6 h-0.5 bg-gray-700 transition-transform duration-300 ${isMenuOpen ? "rotate-45 translate-y-2" : ""}`}></span>
+                <span className={`block w-6 h-0.5 bg-gray-700 transition-opacity duration-300 ${isMenuOpen ? "opacity-0" : ""}`}></span>
+                <span className={`block w-6 h-0.5 bg-gray-700 transition-transform duration-300 ${isMenuOpen ? "-rotate-45 -translate-y-2" : ""}`}></span>
               </div>
             </button>
           </div>
         </div>
-        <nav
-          className={`bg-blue-900 lg:rounded-t-lg w-full ${
-            isMenuOpen ? "block" : "hidden"
-          } lg:block`}
-        >
+        <nav className={`bg-blue-900 lg:rounded-t-lg w-full ${isMenuOpen ? "block" : "hidden"} lg:block`}>
           <div className="container mx-auto sticky px-4">
             <ul className="flex flex-col lg:flex-row items-center">
               {navLinks.map((link, index) => (
                 <li key={link} className="w-full lg:w-auto">
-                  <a
-                    href="#"
-                    className={`block px-5 py-4 text-white font-medium whitespace-nowrap transition-colors duration-200 hover:bg-white/10 hover:text-amber-300 ${
-                      index === 0 ? "bg-white/10 text-amber-300" : ""
-                    }`}
-                  >
+                  <a href="#" className={`block px-5 py-4 text-white font-medium whitespace-nowrap transition-colors duration-200 hover:bg-white/10 hover:text-amber-300 ${index === 0 ? "bg-white/10 text-amber-300" : ""}`}>
                     {link}
                   </a>
                 </li>
               ))}
               <li className="ml-auto p-2 my-2 lg:my-0 w-full lg:w-auto">
                 <div className="relative flex items-center">
-                  <input
-                    type="search"
-                    className="bg-white/10 text-white placeholder-white/70 rounded-full py-2 pl-4 pr-10 w-full lg:w-52 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                    placeholder="Search news..."
-                  />
-                  <button
-                    className="absolute right-0 top-0 h-full px-3 text-white"
-                    aria-label="Search"
-                  >
-                    <SearchIcon />
-                  </button>
+                  <input type="search" className="bg-white/10 text-white placeholder-white/70 rounded-full py-2 pl-4 pr-10 w-full lg:w-52 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="Search news..." />
+                  <button className="absolute right-0 top-0 h-full px-3 text-white" aria-label="Search"><SearchIcon /></button>
                 </div>
               </li>
             </ul>
           </div>
         </nav>
       </header>
-
-      <div
-        className="bg-gradient-to-r from-red-700 to-red-800 text-white py-3 overflow-hidden"
-        role="marquee"
-      >
-        <div className="container mx-auto px-4 flex items-center gap-4">
-          <span className="bg-white text-red-700 px-4 py-1.5 rounded-full font-bold text-sm whitespace-nowrap flex items-center gap-2">
-            <BoltIcon /> Breaking
-          </span>
-          <div className="flex-1 overflow-hidden">
-            <div className="flex whitespace-nowrap animate-ticker">
-              {tickerItems.map((item, i) => (
-                <span key={i} className="mx-6 font-medium">
-                  {item}
-                </span>
-              ))}
-              {tickerItems.map((item, i) => (
-                <span key={`dup-${i}`} className="mx-6 font-medium">
-                  {item}
-                </span>
-              ))}
-            </div>
+      
+      <div className="bg-gradient-to-r from-red-700 to-red-800 text-white py-3 overflow-hidden" role="marquee">
+          {/* Ticker remains the same */}
+          <div className="container mx-auto px-4 flex items-center gap-4">
+              <span className="bg-white text-red-700 px-4 py-1.5 rounded-full font-bold text-sm whitespace-nowrap flex items-center gap-2"><BoltIcon /> Breaking</span>
+              <div className="flex-1 overflow-hidden">
+                  <div className="flex whitespace-nowrap animate-ticker">
+                      {tickerItems.map((item, i) => (<span key={i} className="mx-6 font-medium">{item}</span>))}
+                      {tickerItems.map((item, i) => (<span key={`dup-${i}`} className="mx-6 font-medium">{item}</span>))}
+                  </div>
+              </div>
           </div>
-        </div>
       </div>
 
       <main id="main-content" className="py-8 md:py-12" role="main">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <section className="lg:col-span-2">
-              <SectionHeader title="Top Stories" />
-              {loading ? (
+              {loading && page === 1 ? (
                 <div className="flex justify-center items-center h-96">
-                  <svg
-                    className="animate-spin h-10 w-10 text-blue-800"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                  <svg className="animate-spin h-10 w-10 text-blue-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 </div>
-              ) : heroArticle ? (
-                <article className="bg-white rounded-xl shadow-lg overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl group mb-8">
-                  <div className="h-64 md:h-80 relative overflow-hidden">
-                    <img
-                      src={
-                        heroArticle.imageUrl ||
-                        "https://placehold.co/1200x800/e2e8f0/e2e8f0?text=."
-                      }
-                      alt={heroArticle.title}
-                      loading="lazy"
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute top-4 left-4 px-4 py-1.5 bg-gradient-to-r from-amber-400 to-amber-500 text-white rounded-full text-sm font-semibold uppercase tracking-wider">
-                      Featured
-                    </div>
+              ) : posts.length > 0 ? (
+                <>
+                  <div className="space-y-4">
+                    {posts.map((article) => (
+                       <NewsListItem key={article._id?.$oid || article.url} article={article} />
+                    ))}
                   </div>
-                  <div className="p-6 md:p-8">
-                    <div className="flex items-center gap-4 mb-4">
-                      <span
-                        className={`px-3 py-1 text-xs font-semibold uppercase rounded-full ${
-                          categoryColorMap[heroArticle.topCategory] ||
-                          categoryColorMap["Default"]
-                        }`}
-                      >
-                        {heroArticle.topCategory}
-                      </span>
-                      <time className="text-gray-500 text-sm">
-                        {formatDate(heroArticle.publishedAt)}
-                      </time>
-                    </div>
-                    <h2 className="font-serif text-2xl md:text-3xl font-bold mb-4 text-gray-800 leading-tight">
-                      <a
-                        href={heroArticle.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-blue-800 transition-colors duration-300"
-                      >
-                        {heroArticle.title}
-                      </a>
-                    </h2>
-                    <p className="text-gray-600 mb-6 leading-relaxed">
-                      {heroArticle.summary}
-                    </p>
-                    <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
-                      <span className="font-semibold text-gray-700">
-                        Source: {heroArticle.source}
-                      </span>
-                    </div>
-                  </div>
-                </article>
+                  {page < totalPages && (
+                     <div className="mt-8 text-center">
+                        <button
+                           onClick={handleLoadMore}
+                           disabled={loading}
+                           className="bg-blue-800 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-900 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                           {loading ? "Loading..." : "Load More"}
+                        </button>
+                     </div>
+                  )}
+                </>
               ) : (
-                <div className="text-center py-16 text-gray-500">
-                  No featured article available.
+                <div className="text-center py-16 text-gray-500 bg-white rounded-lg shadow-sm">
+                  <h3 className="text-xl font-semibold">No articles found.</h3>
+                  <p>Try adjusting your filters or checking back later.</p>
                 </div>
               )}
             </section>
 
-            <aside className="space-y-8">
-              <div className="bg-white p-6 rounded-xl shadow-md">
-                <h3 className="font-serif text-xl font-bold text-blue-900 flex items-center gap-2 mb-4 pb-2 border-b-2 border-amber-400">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-5 h-5"
-                  >
-                    <polygon points="22 3 2 3 10 12.46V19l4 2v-8.54L22 3z"></polygon>
-                  </svg>{" "}
-                  Filters
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="source"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Source
-                    </label>
-                    <select
-                      id="source"
-                      name="source"
-                      value={filters.source}
-                      onChange={handleFilterChange}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                    >
-                      <option value="">All Sources</option>
-                      {allSources.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="category"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Category
-                    </label>
-                    <select
-                      id="category"
-                      name="category"
-                      value={filters.category}
-                      onChange={handleFilterChange}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                    >
-                      <option value="">All Categories</option>
-                      {ALL_CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    onClick={clearFilters}
-                    className="w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                  >
-                    Clear Filters
-                  </button>
+            <aside className="space-y-8 lg:sticky lg:top-8 self-start">
+                <div className="bg-white p-6 rounded-xl shadow-md">
+                    <h3 className="font-serif text-xl font-bold text-blue-900 flex items-center gap-2 mb-4 pb-2 border-b-2 border-amber-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polygon points="22 3 2 3 10 12.46V19l4 2v-8.54L22 3z"></polygon></svg>
+                        Filters
+                    </h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="source" className="block text-sm font-medium text-gray-700 mb-1">Source</label>
+                            <select id="source" name="source" value={filters.source} onChange={handleFilterChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option value="">All Sources</option>
+                                {allSources.map((s) => (<option key={s} value={s}>{s}</option>))}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                            <select id="category" name="category" value={filters.category} onChange={handleFilterChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option value="">All Categories</option>
+                                {ALL_CATEGORIES.map((c) => (<option key={c} value={c}>{c}</option>))}
+                            </select>
+                        </div>
+                        <button onClick={clearFilters} className="w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                            Clear Filters
+                        </button>
+                    </div>
                 </div>
-              </div>
-              <div className="hidden lg:block">
-                {" "}
-                <div className="bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 font-medium text-center w-full h-[600px]">
-                  <span>Advertisement</span>
-                  <p className="text-sm">300 x 600</p>
+                <div className="hidden lg:block">
+                    <div className="bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 font-medium text-center w-full h-[600px]">
+                        <span>Advertisement</span>
+                        <p className="text-sm">300 x 600</p>
+                    </div>
                 </div>
-              </div>
             </aside>
           </div>
-
-          <section className="mt-12">
-            <SectionHeader title="Latest News" />
-            {loading ? (
-              <div className="flex justify-center items-center h-96">
-                <svg
-                  className="animate-spin h-10 w-10 text-blue-800"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-              </div>
-            ) : remainingArticles.length > 0 ? (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-                  {remainingArticles.map((article) => (
-                    <NewsCard key={article._id.$oid} article={article} />
-                  ))}
-                </div>
-                <Pagination
-                  page={page}
-                  totalPages={totalPages}
-                  setPage={setPage}
-                />
-              </>
-            ) : (
-              <div className="text-center py-16 text-gray-500">
-                <h3>No articles found.</h3>
-                <p>Try adjusting your filters.</p>
-              </div>
-            )}
-          </section>
         </div>
       </main>
 
-      <footer
-        className="bg-gray-800 text-gray-300 pt-12 mt-16"
-        role="contentinfo"
-      >
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-            <div className="md:col-span-2 lg:col-span-1">
-              <h3 className="font-serif text-2xl font-bold text-amber-400 flex items-center gap-2 mb-4">
-                <NewspaperIcon /> NewsHub
-              </h3>
-              <p className="text-sm mb-4">
-                Your trusted source for breaking news and in-depth analysis from
-                around the world.
-              </p>
-              <div className="flex items-center gap-3">
-                <a
-                  href="#"
-                  aria-label="Facebook"
-                  className="p-2 rounded-full bg-gray-700 hover:bg-amber-400 hover:text-gray-900 transition-colors duration-200"
-                >
-                  <FacebookIcon />
-                </a>
-                <a
-                  href="#"
-                  aria-label="Twitter"
-                  className="p-2 rounded-full bg-gray-700 hover:bg-amber-400 hover:text-gray-900 transition-colors duration-200"
-                >
-                  <TwitterIcon />
-                </a>
-                <a
-                  href="#"
-                  aria-label="Instagram"
-                  className="p-2 rounded-full bg-gray-700 hover:bg-amber-400 hover:text-gray-900 transition-colors duration-200"
-                >
-                  <InstagramIcon />
-                </a>
-                <a
-                  href="#"
-                  aria-label="YouTube"
-                  className="p-2 rounded-full bg-gray-700 hover:bg-amber-400 hover:text-gray-900 transition-colors duration-200"
-                >
-                  <YoutubeIcon />
-                </a>
-              </div>
+      <footer className="bg-gray-800 text-gray-300 pt-12 mt-16" role="contentinfo">
+         {/* Footer content remains the same */}
+         <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+               <div className="md:col-span-2 lg:col-span-1">
+                  <h3 className="font-serif text-2xl font-bold text-amber-400 flex items-center gap-2 mb-4"><NewspaperIcon /> NewsHub</h3>
+                  <p className="text-sm mb-4">Your trusted source for breaking news and in-depth analysis from around the world.</p>
+                  <div className="flex items-center gap-3">
+                     <a href="#" aria-label="Facebook" className="p-2 rounded-full bg-gray-700 hover:bg-amber-400 hover:text-gray-900 transition-colors duration-200"><FacebookIcon /></a>
+                     <a href="#" aria-label="Twitter" className="p-2 rounded-full bg-gray-700 hover:bg-amber-400 hover:text-gray-900 transition-colors duration-200"><TwitterIcon /></a>
+                     <a href="#" aria-label="Instagram" className="p-2 rounded-full bg-gray-700 hover:bg-amber-400 hover:text-gray-900 transition-colors duration-200"><InstagramIcon /></a>
+                     <a href="#" aria-label="YouTube" className="p-2 rounded-full bg-gray-700 hover:bg-amber-400 hover:text-gray-900 transition-colors duration-200"><YoutubeIcon /></a>
+                  </div>
+               </div>
+               <div>
+                  <h4 className="font-bold text-white mb-4">News Categories</h4>
+                  <ul className="space-y-2 text-sm">
+                     {["Politics", "Technology", "Sports", "Business", "Health"].map((cat) => (<li key={cat}><a href="#" className="hover:text-amber-400">{cat}</a></li>))}
+                  </ul>
+               </div>
+               <div>
+                  <h4 className="font-bold text-white mb-4">About Us</h4>
+                  <ul className="space-y-2 text-sm">
+                     {["Our Team", "Contact Us", "Careers", "Advertise"].map((link) => (<li key={link}><a href="#" className="hover:text-amber-400">{link}</a></li>))}
+                  </ul>
+               </div>
+               <div>
+                  <h4 className="font-bold text-white mb-4">Legal</h4>
+                  <ul className="space-y-2 text-sm">
+                     {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((link) => (<li key={link}><a href="#" className="hover:text-amber-400">{link}</a></li>))}
+                  </ul>
+               </div>
             </div>
-            <div>
-              <h4 className="font-bold text-white mb-4">News Categories</h4>
-              <ul className="space-y-2 text-sm">
-                {["Politics", "Technology", "Sports", "Business", "Health"].map(
-                  (cat) => (
-                    <li key={cat}>
-                      <a href="#" className="hover:text-amber-400">
-                        {cat}
-                      </a>
-                    </li>
-                  )
-                )}
-              </ul>
+            <div className="flex flex-col md:flex-row justify-between items-center text-sm py-6 border-t border-gray-700">
+               <p className="text-gray-400 mb-4 md:mb-0">&copy; {new Date().getFullYear()} NewsHub. All rights reserved.</p>
+               <div className="flex items-center gap-4">
+                  <a href="#" className="hover:text-amber-400">Sitemap</a>
+                  <a href="#" className="hover:text-amber-400">RSS Feed</a>
+                  <a href="#" className="hover:text-amber-400">Newsletter</a>
+               </div>
             </div>
-            <div>
-              <h4 className="font-bold text-white mb-4">About Us</h4>
-              <ul className="space-y-2 text-sm">
-                {["Our Team", "Contact Us", "Careers", "Advertise"].map(
-                  (link) => (
-                    <li key={link}>
-                      <a href="#" className="hover:text-amber-400">
-                        {link}
-                      </a>
-                    </li>
-                  )
-                )}
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-white mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm">
-                {["Privacy Policy", "Terms of Service", "Cookie Policy"].map(
-                  (link) => (
-                    <li key={link}>
-                      <a href="#" className="hover:text-amber-400">
-                        {link}
-                      </a>
-                    </li>
-                  )
-                )}
-              </ul>
-            </div>
-          </div>
-          <div className="flex flex-col md:flex-row justify-between items-center text-sm py-6 border-t border-gray-700">
-            <p className="text-gray-400 mb-4 md:mb-0">
-              &copy; {new Date().getFullYear()} NewsHub. All rights reserved.
-            </p>
-            <div className="flex items-center gap-4">
-              <a href="#" className="hover:text-amber-400">
-                Sitemap
-              </a>
-              <a href="#" className="hover:text-amber-400">
-                RSS Feed
-              </a>
-              <a href="#" className="hover:text-amber-400">
-                Newsletter
-              </a>
-            </div>
-          </div>
-        </div>
+         </div>
       </footer>
     </div>
   );

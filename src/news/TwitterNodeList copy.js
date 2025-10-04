@@ -31,6 +31,7 @@ import {
 import { Toaster, toast } from "react-hot-toast";
 
 // --- CONFIGURATION ---
+// const API_BASE_URL = "https://twitterapi-node.onrender.com/api";
 const API_BASE_URL = "http://localhost:4000/api";
 const POSTS_PER_PAGE = 10;
 const ALL_CATEGORIES = [
@@ -103,23 +104,28 @@ function useDebounce(value, delay) {
 
 // --- MAIN DASHBOARD COMPONENT ---
 export default function AdminDashboard() {
-  const [view, setView] = useState("posts");
+  const [view, setView] = useState("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [onSaveSuccessCallback, setOnSaveSuccessCallback] = useState(null);
 
+  // ✅ REPLACED: This version opens the modal instantly for a better user experience.
   const handleOpenModal = (post = null, onSaveSuccess = () => {}) => {
     if (post && post._id) {
+      // --- For an existing post ---
+      // 1. Open the modal immediately with the data we already have.
       setEditingPost({ ...DEFAULT_POST_STATE, ...post });
       setIsModalOpen(true);
       setOnSaveSuccessCallback(() => onSaveSuccess);
 
+      // 2. In the background, fetch the latest, fully-detailed version.
       fetch(`${API_BASE_URL}/post/${post._id}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.status === "success") {
+            // 3. Silently update the form if the fetched data is different.
             setEditingPost((prevPost) => ({ ...prevPost, ...data.post }));
           } else {
             throw new Error("Failed to refresh post details.");
@@ -130,9 +136,8 @@ export default function AdminDashboard() {
           toast.error("Could not load latest post details.");
         });
     } else {
-      setEditingPost(
-        post ? { ...DEFAULT_POST_STATE, ...post } : DEFAULT_POST_STATE
-      );
+      // --- For a new post ---
+      setEditingPost(DEFAULT_POST_STATE);
       setOnSaveSuccessCallback(() => onSaveSuccess);
       setIsModalOpen(true);
     }
@@ -155,13 +160,8 @@ export default function AdminDashboard() {
       ? `${API_BASE_URL}/post/${postData._id}`
       : `${API_BASE_URL}/post`;
     const method = isUpdating ? "PUT" : "POST";
-
     const payload = {
       ...postData,
-      tags:
-        postData.tags?.map((tag) =>
-          typeof tag === "object" ? tag.name : tag
-        ) || [],
       relatedStories: postData.relatedStories?.map((story) => story._id) || [],
     };
 
@@ -252,55 +252,74 @@ const Sidebar = ({ currentView, setView, isOpen, setIsOpen }) => {
           : "text-gray-600 hover:bg-gray-100"
       }`}
     >
-      {" "}
-      {icon} {text}{" "}
+      {icon} {text}
     </button>
   );
   return (
-    <aside
-      className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out sm:relative sm:translate-x-0 ${
-        isOpen ? "translate-x-0" : "-translate-x-full"
-      }`}
-    >
-      {" "}
-      <div className="text-xl font-bold p-4 border-b">
-        <span>NewsAdmin</span>
-      </div>{" "}
-      <nav className="flex-1 p-4 space-y-2">
-        {" "}
-        <NavItem viewName="dashboard" icon={<FiHome />} text="Dashboard" />{" "}
-        <NavItem viewName="posts" icon={<FiFileText />} text="Posts" />{" "}
-        <NavItem
-          viewName="sticky-posts"
-          icon={<FiTrendingUp />}
-          text="Sticky Posts"
-        />{" "}
-        <NavItem
-          viewName="fetch-tweet"
-          icon={<FiTwitter />}
-          text="Fetch from Tweet"
-        />{" "}
-        <NavItem viewName="json-parser" icon={<FiCode />} text="JSON Parser" />{" "}
-        <NavItem viewName="settings" icon={<FiSettings />} text="Settings" />{" "}
-      </nav>{" "}
-    </aside>
+    <>
+      <div
+        onClick={() => setIsOpen(false)}
+        className={`fixed inset-0 bg-black/50 z-20 sm:hidden transition-opacity ${
+          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      ></div>
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out sm:relative sm:translate-x-0 ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="text-xl font-bold p-4 border-b flex items-center justify-between">
+          <span>NewsAdmin</span>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="sm:hidden text-gray-500 hover:text-gray-800"
+          >
+            &times;
+          </button>
+        </div>
+        <nav className="flex-1 p-4 space-y-2">
+          <NavItem viewName="dashboard" icon={<FiHome />} text="Dashboard" />
+          <NavItem viewName="posts" icon={<FiFileText />} text="Posts" />
+          <NavItem
+            viewName="sticky-posts"
+            icon={<FiTrendingUp />}
+            text="Sticky Posts"
+          />
+          <NavItem
+            viewName="fetch-tweet"
+            icon={<FiTwitter />}
+            text="Fetch from Tweet"
+          />
+          <NavItem
+            viewName="json-parser"
+            icon={<FiCode />}
+            text="JSON Parser"
+          />
+          <NavItem viewName="settings" icon={<FiSettings />} text="Settings" />
+        </nav>
+        <div className="p-4 border-t">
+          <button className="flex items-center gap-3 px-3 py-2 rounded hover:bg-gray-100 w-full text-gray-600">
+            <FiLogOut /> Logout
+          </button>
+        </div>
+      </aside>
+    </>
   );
 };
+
 const Header = ({ onMenuClick }) => (
   <header className="flex-shrink-0 bg-white shadow-sm p-4 flex justify-between items-center md:justify-end">
-    {" "}
     <button onClick={onMenuClick} className="sm:hidden p-2 text-gray-600">
       <FiMenu size={24} />
-    </button>{" "}
+    </button>
     <div className="flex items-center gap-4">
-      {" "}
       <input
         type="text"
         placeholder="Search..."
         className="border rounded-lg px-3 py-2 hidden sm:block"
-      />{" "}
-      <FiBell className="text-2xl text-gray-500" />{" "}
-    </div>{" "}
+      />
+      <FiBell className="text-2xl text-gray-500" />
+    </div>
   </header>
 );
 
@@ -312,6 +331,20 @@ const DashboardHomePage = () => (
     </h1>
   </div>
 );
+const JsonParserPage = () => (
+  <div>
+    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">
+      JSON Parser
+    </h1>
+  </div>
+);
+const FetchTweetPage = () => (
+  <div>
+    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">
+      Fetch from Tweet
+    </h1>
+  </div>
+);
 const SettingsPage = () => (
   <div>
     <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">
@@ -320,160 +353,14 @@ const SettingsPage = () => (
   </div>
 );
 
-const FetchTweetPage = ({ onOpenModal }) => {
-  const [tweetId, setTweetId] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const handleInputChange = (event) => {
-    const value = event.target.value;
-    const regex = /(?:twitter\.com|x\.com)\/[a-zA-Z0-9_]+\/status\/(\d+)/;
-    const match = value.match(regex);
-    setTweetId(match ? match[1] : value);
-  };
-
-  const handleFetchTweet = () => {
-    if (!tweetId) {
-      toast.error("Please provide a Tweet ID or URL.");
-      return;
-    }
-    setIsLoading(true);
-    const promise = fetch(`${API_BASE_URL}/formatted-tweet`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tweet_ids: [tweetId] }),
-    })
-      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
-      .then(({ ok, data }) => {
-        if (
-          !ok ||
-          data.status !== "success" ||
-          !data.successfulPosts ||
-          data.successfulPosts.length === 0
-        ) {
-          throw new Error(
-            data.message || "Tweet could not be processed or already exists."
-          );
-        }
-        return data.successfulPosts[0];
-      });
-    toast
-      .promise(promise, {
-        loading: "Fetching and creating post...",
-        success: (createdPost) => {
-          onOpenModal(createdPost);
-          return "Tweet processed! You can now edit the post.";
-        },
-        error: (err) => `Error: ${err.message}`,
-      })
-      .finally(() => {
-        setIsLoading(false);
-        setTweetId("");
-      });
-  };
-
-  return (
-    <div>
-      {" "}
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">
-        Fetch from Tweet
-      </h1>{" "}
-      <div className="bg-white rounded-lg shadow p-6 max-w-2xl mx-auto">
-        {" "}
-        <input
-          id="tweetId"
-          type="text"
-          value={tweetId}
-          onChange={handleInputChange}
-          placeholder="Paste Tweet URL or ID"
-          className="w-full px-3 py-2 border rounded-lg mb-4"
-        />{" "}
-        <button
-          onClick={handleFetchTweet}
-          disabled={isLoading}
-          className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-lg"
-        >
-          {" "}
-          {isLoading ? (
-            "Processing..."
-          ) : (
-            <>
-              <FiTwitter /> Fetch & Edit
-            </>
-          )}{" "}
-        </button>{" "}
-      </div>{" "}
-    </div>
-  );
-};
-
-const JsonParserPage = () => {
-  const [jsonInput, setJsonInput] = useState("");
-  const handleSave = () => {
-    let parsedJson;
-    try {
-      parsedJson = JSON.parse(jsonInput);
-    } catch (error) {
-      toast.error("Invalid JSON format.");
-      return;
-    }
-    const promise = fetch(`${API_BASE_URL}/post`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...DEFAULT_POST_STATE, ...parsedJson }),
-    })
-      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
-      .then(({ ok, data }) => {
-        if (!ok) throw new Error(data.error || "Error.");
-        return data;
-      });
-    toast.promise(promise, {
-      loading: "Saving parsed post...",
-      success: () => {
-        setJsonInput("");
-        return "Post created successfully!";
-      },
-      error: (err) => `Error: ${err.message}`,
-    });
-  };
-  return (
-    <div>
-      {" "}
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">
-        JSON Object Parser
-      </h1>{" "}
-      <div className="bg-white rounded-lg shadow p-6">
-        {" "}
-        <textarea
-          value={jsonInput}
-          onChange={(e) => setJsonInput(e.target.value)}
-          rows="15"
-          className="w-full border rounded-lg p-3 font-mono text-sm"
-          placeholder="Paste a valid post JSON object here..."
-        />{" "}
-        <div className="flex justify-end mt-4">
-          {" "}
-          <button
-            onClick={handleSave}
-            disabled={!jsonInput.trim()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold disabled:bg-blue-300"
-          >
-            Parse & Save Post
-          </button>{" "}
-        </div>{" "}
-      </div>{" "}
-    </div>
-  );
-};
-
+// --- POSTS LIST PAGE ---
 const PostsListPage = ({ onOpenModal }) => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [quickPostText, setQuickPostText] = useState("");
-  const [isPublishingQuick, setIsPublishingQuick] = useState(false);
   const [filters, setFilters] = useState({ source: "", category: "" });
   const [allSources, setAllSources] = useState([]);
-  const [selectedPosts, setSelectedPosts] = useState(new Set());
 
   const fetchPosts = useCallback(async (pageNum, currentFilters) => {
     setLoading(true);
@@ -492,7 +379,7 @@ const PostsListPage = ({ onOpenModal }) => {
         setPosts(data.posts || []);
         setTotalPages(data.totalPages || 1);
       } else {
-        throw new Error(data.message);
+        throw new Error(data.message || "Failed to fetch posts");
       }
     } catch (err) {
       toast.error("Error fetching posts.");
@@ -513,125 +400,35 @@ const PostsListPage = ({ onOpenModal }) => {
     };
     fetchSources();
   }, []);
+
   useEffect(() => {
     fetchPosts(page, filters);
-    setSelectedPosts(new Set());
   }, [page, filters, fetchPosts]);
 
   const handleFilterChange = (e) => {
     setPage(1);
     setFilters((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
+
   const clearFilters = () => {
     setPage(1);
     setFilters({ source: "", category: "" });
   };
 
-  const handleQuickCreate = () => {
-    if (!quickPostText.trim()) {
-      toast.error("Please paste some text.");
-      return;
-    }
-    const lines = quickPostText.trim().split("\n");
-    const newPost = {
-      ...DEFAULT_POST_STATE,
-      title: lines[0] || "",
-      summary: lines.slice(1).join("\n").trim(),
-    };
-    onOpenModal(newPost, () => fetchPosts(page, filters));
-    setQuickPostText("");
-  };
-  const handleQuickPublish = () => {
-    /* ... unchanged ... */
-  };
-
-  const handleBulkDelete = () => {
-    if (selectedPosts.size === 0) return toast.error("No posts selected.");
-    if (!window.confirm(`Delete ${selectedPosts.size} posts permanently?`))
-      return;
-    const promise = Promise.all(
-      Array.from(selectedPosts).map((id) =>
-        fetch(`${API_BASE_URL}/post/${id}`, { method: "DELETE" })
-      )
-    );
-    toast.promise(promise, {
-      loading: "Deleting posts...",
-      success: () => {
-        fetchPosts(page, filters);
-        return `${selectedPosts.size} posts deleted.`;
-      },
-      error: "Failed to delete some posts.",
-    });
-  };
-
-  const handleToggleSelect = (id) => {
-    setSelectedPosts((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) newSet.delete(id);
-      else newSet.add(id);
-      return newSet;
-    });
-  };
-  const handleToggleSelectAll = () => {
-    if (selectedPosts.size === posts.length) setSelectedPosts(new Set());
-    else setSelectedPosts(new Set(posts.map((p) => p._id)));
-  };
-
   return (
     <div>
-      {" "}
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">
         Manage Posts
       </h1>
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <h2 className="font-semibold text-gray-700 mb-3">Quick Post Creator</h2>
-        <textarea
-          value={quickPostText}
-          onChange={(e) => setQuickPostText(e.target.value)}
-          rows="4"
-          className="w-full border rounded-lg p-2 bg-gray-50"
-          placeholder="Paste text here... Title on the first line."
-        />
-        <div className="flex justify-end gap-3 mt-3">
-          <button
-            onClick={handleQuickCreate}
-            disabled={!quickPostText.trim()}
-            className="px-5 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-semibold disabled:bg-gray-400"
-          >
-            Parse & Edit
-          </button>
-          <button
-            onClick={handleQuickPublish}
-            disabled={!quickPostText.trim() || isPublishingQuick}
-            className="px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold disabled:bg-indigo-400 flex items-center gap-2"
-          >
-            {isPublishingQuick ? (
-              "Publishing..."
-            ) : (
-              <>
-                <FiZap size={16} /> Publish Directly
-              </>
-            )}
-          </button>
-        </div>
-      </div>
       <div className="bg-white rounded-lg shadow">
         <div className="p-4 border-b space-y-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <h3 className="font-semibold text-lg">All Posts</h3>{" "}
-              {selectedPosts.size > 0 && (
-                <button
-                  onClick={handleBulkDelete}
-                  className="flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-800"
-                >
-                  <FiTrash2 /> Delete ({selectedPosts.size})
-                </button>
-              )}
-            </div>
+            <h3 className="font-semibold text-lg text-gray-800">
+              All Regular Posts
+            </h3>
             <button
               onClick={() => onOpenModal(null, () => fetchPosts(page, filters))}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
             >
               + Create Post
             </button>
@@ -642,12 +439,12 @@ const PostsListPage = ({ onOpenModal }) => {
               name="category"
               value={filters.category}
               onChange={handleFilterChange}
-              className="border-gray-300 rounded-lg text-sm"
+              className="border-gray-300 rounded-lg shadow-sm text-sm"
             >
               <option value="">All Categories</option>
-              {ALL_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {ALL_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
                 </option>
               ))}
             </select>
@@ -655,19 +452,19 @@ const PostsListPage = ({ onOpenModal }) => {
               name="source"
               value={filters.source}
               onChange={handleFilterChange}
-              className="border-gray-300 rounded-lg text-sm"
+              className="border-gray-300 rounded-lg shadow-sm text-sm"
             >
               <option value="">All Sources</option>
-              {allSources.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+              {allSources.map((src) => (
+                <option key={src} value={src}>
+                  {src}
                 </option>
               ))}
             </select>
             {(filters.source || filters.category) && (
               <button
                 onClick={clearFilters}
-                className="text-sm font-semibold text-blue-600"
+                className="text-sm font-semibold text-blue-600 hover:text-blue-800"
               >
                 Clear
               </button>
@@ -680,25 +477,22 @@ const PostsListPage = ({ onOpenModal }) => {
           onOpenModal={onOpenModal}
           onActionSuccess={() => fetchPosts(page, filters)}
           isStickyPage={false}
-          selectedPosts={selectedPosts}
-          onToggleSelect={handleToggleSelect}
-          onToggleSelectAll={handleToggleSelectAll}
         />
         <div className="flex justify-between items-center p-4 border-t">
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border font-semibold text-gray-600 disabled:text-gray-300"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border font-semibold text-gray-600 disabled:text-gray-300 hover:bg-gray-100"
           >
             <FiChevronLeft /> Prev
           </button>
-          <span className="font-semibold">
+          <span className="font-semibold text-gray-700">
             Page {page} of {totalPages}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border font-semibold text-gray-600 disabled:text-gray-300"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border font-semibold text-gray-600 disabled:text-gray-300 hover:bg-gray-100"
           >
             Next <FiChevronRight />
           </button>
@@ -708,9 +502,11 @@ const PostsListPage = ({ onOpenModal }) => {
   );
 };
 
+// --- STICKY POSTS PAGE ---
 const StickyPostsPage = ({ onOpenModal }) => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const fetchStickyPosts = useCallback(async () => {
     setLoading(true);
     try {
@@ -719,7 +515,7 @@ const StickyPostsPage = ({ onOpenModal }) => {
       if (data.status === "success") {
         setPosts(data.posts || []);
       } else {
-        throw new Error(data.message);
+        throw new Error(data.message || "Failed to fetch sticky posts");
       }
     } catch (err) {
       toast.error("Error fetching sticky posts.");
@@ -727,166 +523,170 @@ const StickyPostsPage = ({ onOpenModal }) => {
       setLoading(false);
     }
   }, []);
+
   useEffect(() => {
     fetchStickyPosts();
   }, [fetchStickyPosts]);
+
   return (
     <div>
-      {" "}
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">
         Sticky Posts
-      </h1>{" "}
+      </h1>
       <div className="bg-white rounded-lg shadow">
-        {" "}
         <div className="p-4 border-b">
-          <h3 className="font-semibold text-lg">All Pinned Items</h3>
-        </div>{" "}
+          <h3 className="font-semibold text-lg text-gray-800">
+            All Pinned Items
+          </h3>
+          <p className="text-sm text-gray-500">
+            Posts fixed to the top of the feed, sorted by position.
+          </p>
+        </div>
         <PostsTable
           posts={posts}
           loading={loading}
           onOpenModal={onOpenModal}
           onActionSuccess={fetchStickyPosts}
           isStickyPage={true}
-        />{" "}
-      </div>{" "}
+        />
+      </div>
     </div>
   );
 };
 
+// --- REUSABLE POSTS TABLE COMPONENT ---
 const PostsTable = ({
   posts,
   loading,
   onOpenModal,
   onActionSuccess,
   isStickyPage,
-  selectedPosts,
-  onToggleSelect,
-  onToggleSelectAll,
 }) => {
-  const handlePinToggle = (p) => {
-    const isPinned = p.pinnedIndex != null;
-    if (isPinned) {
-      if (window.confirm(`Unpin "${p.title}"?`))
-        performUpdate({ ...p, pinnedIndex: null });
+  const handlePinToggle = (post) => {
+    const isCurrentlyPinned =
+      post.pinnedIndex !== null && post.pinnedIndex > -1;
+    if (isCurrentlyPinned) {
+      if (window.confirm(`Are you sure you want to unpin "${post.title}"?`)) {
+        performUpdate({ ...post, pinnedIndex: null });
+      }
     } else {
-      const pos = window.prompt("Enter pin position...");
-      if (pos) {
-        const idx = parseInt(pos, 10) - 1;
-        if (!isNaN(idx) && idx >= 0) performUpdate({ ...p, pinnedIndex: idx });
-        else toast.error("Invalid position.");
+      const positionStr = window.prompt(
+        "Enter pin position (e.g., 1, 2, 3...)."
+      );
+      if (positionStr) {
+        const position = parseInt(positionStr, 10);
+        if (!isNaN(position) && position > 0) {
+          performUpdate({ ...post, pinnedIndex: position - 1 });
+        } else {
+          toast.error("Invalid position. Please enter a positive number.");
+        }
       }
     }
   };
-  const performUpdate = (p) =>
-    toast.promise(
-      fetch(`${API_BASE_URL}/post/${p._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(p),
-      }).then((r) => {
-        if (!r.ok) throw new Error("Update failed");
-      }),
-      {
-        loading: "Updating...",
-        success: () => {
-          onActionSuccess();
-          return "Updated!";
-        },
-        error: (e) => e.message,
-      }
-    );
-  const handleDelete = (id) => {
-    if (!window.confirm("Delete post?")) return;
-    toast.promise(
-      fetch(`${API_BASE_URL}/post/${id}`, { method: "DELETE" }).then((r) => {
-        if (!r.ok) throw new Error("Delete failed");
-      }),
-      {
-        loading: "Deleting...",
-        success: () => {
-          onActionSuccess();
-          return "Deleted!";
-        },
-        error: (e) => e.message,
-      }
-    );
+
+  const performUpdate = (updatedPost) => {
+    const promise = fetch(`${API_BASE_URL}/post/${updatedPost._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedPost),
+    }).then((res) => {
+      if (!res.ok) throw new Error("Update failed.");
+    });
+    toast.promise(promise, {
+      loading: "Updating pin status...",
+      success: () => {
+        onActionSuccess();
+        return "Post pin status updated!";
+      },
+      error: (err) => `Error: ${err.message}`,
+    });
   };
-  const handleNotify = (id, title) => {
-    if (!window.confirm(`Send notification for "${title}"?`)) return;
-    toast.promise(
-      fetch(`${API_BASE_URL}/admin/notify/post/${id}`, { method: "POST" })
-        .then((r) => r.json())
-        .then((d) => {
-          if (!d.successCount) throw new Error(d.message || "Failed");
-        }),
-      { loading: "Sending...", success: "Notified!", error: (e) => e.message }
-    );
+
+  const handleDelete = async (postId) => {
+    if (
+      !window.confirm("Are you sure you want to delete this post permanently?")
+    )
+      return;
+    const promise = fetch(`${API_BASE_URL}/post/${postId}`, {
+      method: "DELETE",
+    }).then((res) => {
+      if (!res.ok) throw new Error("Delete failed");
+    });
+    toast.promise(promise, {
+      loading: "Deleting post...",
+      success: () => {
+        onActionSuccess();
+        return "Post deleted.";
+      },
+      error: (err) => err.message,
+    });
   };
+
+  const handleSendGlobalNotification = async (postId, postTitle) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to send a GLOBAL notification for "${postTitle}"?`
+      )
+    )
+      return;
+    const promise = fetch(`${API_BASE_URL}/admin/notify/post/${postId}`, {
+      method: "POST",
+    })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || "Failed.");
+        return data;
+      });
+    toast.promise(promise, {
+      loading: "Sending global notification...",
+      success: (data) =>
+        `Alert sent successfully! Success: ${data.successCount}, Failed: ${data.failureCount}.`,
+      error: (err) => err.message,
+    });
+  };
+
   return (
     <div className="overflow-x-auto">
-      {" "}
       <table className="w-full text-left text-sm">
         <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
           <tr>
-            {!isStickyPage && (
-              <th className="px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={
-                    selectedPosts?.size === posts.length && posts.length > 0
-                  }
-                  onChange={onToggleSelectAll}
-                />
-              </th>
-            )}
             {isStickyPage && <th className="px-4 py-3 w-16">Pos</th>}
-            <th className="px-4 py-3">Title</th>{" "}
-            <th className="px-4 py-3">Categories</th>{" "}
-            <th className="px-4 py-3">Source</th>{" "}
-            <th className="px-4 py-3">Created</th>{" "}
+            <th className="px-4 py-3">Title</th>
+            <th className="px-4 py-3">Categories</th>
+            <th className="px-4 py-3">Source</th>
+            <th className="px-4 py-3">Created</th>
             <th className="px-4 py-3 text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={7} className="text-center p-8">
+              <td
+                colSpan={isStickyPage ? 6 : 5}
+                className="text-center p-8 text-gray-500"
+              >
                 Loading...
               </td>
             </tr>
           ) : posts.length === 0 ? (
             <tr>
-              <td colSpan={7} className="text-center p-8">
+              <td
+                colSpan={isStickyPage ? 6 : 5}
+                className="text-center p-8 text-gray-500"
+              >
                 No posts found.
               </td>
             </tr>
           ) : (
             posts.map((post) => (
-              <tr
-                key={post._id}
-                className={`border-t hover:bg-gray-50 ${
-                  selectedPosts?.has(post._id) ? "!bg-blue-50" : ""
-                }`}
-              >
-                {!isStickyPage && (
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedPosts.has(post._id)}
-                      onChange={() => onToggleSelect(post._id)}
-                    />
-                  </td>
-                )}
+              <tr key={post._id} className="border-t hover:bg-gray-50">
                 {isStickyPage && (
                   <td className="px-4 py-3 font-bold text-lg text-blue-600">
                     #{post.pinnedIndex + 1}
                   </td>
                 )}
                 <td className="px-4 py-3 max-w-sm">
-                  <p className="font-medium truncate flex items-center gap-2">
-                    {post.pinnedIndex != null && (
-                      <FiBookmark className="text-yellow-600" />
-                    )}
+                  <p className="font-medium text-gray-800 truncate">
                     {post.title}
                   </p>
                 </td>
@@ -894,11 +694,11 @@ const PostsTable = ({
                   {post.categories?.join(", ") || "-"}
                 </td>
                 <td className="px-4 py-3">
-                  <span className="bg-gray-200 px-2 py-1 rounded-full text-xs">
+                  <span className="bg-gray-200 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">
                     {post.source}
                   </span>
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap">
+                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                   {formatTimeAgo(post.createdAt)}
                 </td>
                 <td className="px-4 py-3">
@@ -933,9 +733,11 @@ const PostsTable = ({
                       <FiTrash2 />
                     </button>
                     <button
-                      onClick={() => handleNotify(post._id, post.title)}
+                      onClick={() =>
+                        handleSendGlobalNotification(post._id, post.title)
+                      }
                       className="p-2 rounded-md border border-indigo-200 text-indigo-600 hover:bg-indigo-50"
-                      title="Send Alert"
+                      title="Send Global Alert"
                     >
                       <FiBell />
                     </button>
@@ -945,44 +747,19 @@ const PostsTable = ({
             ))
           )}
         </tbody>
-      </table>{" "}
+      </table>
     </div>
   );
 };
 
+// --- REUSABLE MODAL & FORM COMPONENTS ---
+
 function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
-  const [formData, setFormData] = useState(DEFAULT_POST_STATE);
+  const [formData, setFormData] = useState(post);
   const [tagInput, setTagInput] = useState("");
-  const [allTags, setAllTags] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
 
-  // This hook fetches all available tags from your backend once when the modal opens.
   useEffect(() => {
-    const fetchTags = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/tags`);
-        const data = await response.json();
-        if (data.status === 'success') {
-          setAllTags(data.tags.map(t => t.name));
-        }
-      } catch (error) {
-        toast.error("Could not load tags.");
-      }
-    };
-    fetchTags();
-  }, []);
-
-  // This hook correctly prepares the form data when the modal opens.
-  // It converts the incoming array of tag objects into an array of simple strings.
-  useEffect(() => {
-    const initialData = post
-      ? {
-          ...DEFAULT_POST_STATE,
-          ...post,
-          tags: post.tags?.map((t) => t.name).filter(Boolean) || [], // Ensures no null/undefined names
-        }
-      : DEFAULT_POST_STATE;
-    setFormData(initialData);
+    setFormData(post || DEFAULT_POST_STATE);
   }, [post]);
 
   const handleChange = (e) =>
@@ -1000,11 +777,33 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
     setFormData((prev) => ({ ...prev, categories: newCategories }));
   };
 
-  const handleRemoveRelated = (storyId) => {
+  const handleTagChange = (e) => setTagInput(e.target.value);
+
+  const handleAddTag = (e) => {
+    if ((e.key === "Enter" || e.type === "blur") && tagInput.trim()) {
+      e.preventDefault();
+      const newTags = new Set([
+        ...(formData.tags || []),
+        tagInput.trim().toLowerCase(),
+      ]);
+      setFormData((prev) => ({ ...prev, tags: Array.from(newTags) }));
+      setTagInput("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setFormData((prev) => ({
+      ...prev,
+      tags: (prev.tags || []).filter((tag) => tag !== tagToRemove),
+    }));
+  };
+
+  // ✅ NEW: Handler to remove a related story
+  const handleRemoveRelatedStory = (storyIdToRemove) => {
     setFormData((prev) => ({
       ...prev,
       relatedStories: (prev.relatedStories || []).filter(
-        (s) => s._id !== storyId
+        (story) => story._id !== storyIdToRemove
       ),
     }));
   };
@@ -1014,58 +813,21 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
     onSave(formData);
   };
 
-  const handleTagInputChange = (e) => {
-    const value = e.target.value;
-    setTagInput(value);
-    if (value.trim()) {
-      setSuggestions(
-        allTags
-          .filter(
-            (t) =>
-              t.toLowerCase().startsWith(value.toLowerCase()) &&
-              !formData.tags.includes(t)
-          )
-          .slice(0, 5)
-      );
-    } else {
-      setSuggestions([]);
-    }
-  };
-
-  const handleSuggestionClick = (suggestion) => {
-    setFormData((prev) => ({
-      ...prev,
-      tags: Array.from(new Set([...prev.tags, suggestion])),
-    }));
-    setTagInput("");
-    setSuggestions([]);
-  };
-
-  const handleAddTagOnEnter = (e) => {
-    if (e.key === "Enter" && tagInput.trim()) {
-      e.preventDefault();
-      handleSuggestionClick(tagInput.trim().toLowerCase());
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove) => {
-    setFormData((prev) => ({
-      ...prev,
-      tags: prev.tags.filter((tag) => tag !== tagToRemove),
-    }));
-  };
-
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
       <form
         onSubmit={handleSubmit}
-        className="bg-white w-full max-w-4xl max-h-[95vh] rounded-xl flex flex-col"
+        className="bg-white w-full h-full max-w-4xl max-h-[95vh] rounded-xl shadow-2xl flex flex-col"
       >
-        <div className="p-5 border-b flex justify-between items-center">
-          <h2 className="text-2xl font-bold">
-            {formData._id ? "Edit Post" : "Create Post"}
+        <div className="flex justify-between items-center p-5 border-b">
+          <h2 className="text-2xl font-bold text-gray-800">
+            {formData._id ? "Edit Post" : "Create New Post"}
           </h2>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-700 text-2xl"
+          >
             &times;
           </button>
         </div>
@@ -1084,112 +846,40 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
             onChange={handleChange}
             rows={3}
           />
-          <div>
-            <label className="block text-sm font-medium mb-1">Tags</label>
-            <div className="relative">
-              <div className="p-2 bg-gray-50 rounded-lg border flex flex-wrap gap-2 items-center">
-                {/* ✅ This now correctly renders the tag name */}
-                {(formData.tags || []).map((tag) => (
-                  <div
-                    key={tag}
-                    className="flex items-center gap-1.5 bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full"
-                  >
-                    {tag}
-                    <button type="button" onClick={() => handleRemoveTag(tag)}>
-                      <FiX size={14} />
-                    </button>
-                  </div>
-                ))}
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={handleTagInputChange}
-                  onKeyDown={handleAddTagOnEnter}
-                  placeholder="Add a tag..."
-                  className="flex-1 bg-transparent focus:outline-none p-1"
-                />
-              </div>
-              {suggestions.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-                  {suggestions.map((s) => (
-                    <div
-                      key={s}
-                      onClick={() => handleSuggestionClick(s)}
-                      className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                    >
-                      {s}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Use 'link:your-topic' for manual linking.
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Related Stories
-            </label>
-            <div className="p-3 bg-gray-50 rounded-lg border min-h-[60px]">
-              {!formData.relatedStories ||
-              formData.relatedStories.length === 0 ? (
-                <p className="text-sm text-gray-500">No related stories.</p>
-              ) : (
-                <div className="space-y-2">
-                  {formData.relatedStories.map((s) => (
-                    <div
-                      key={s._id}
-                      className="flex items-center justify-between bg-white p-2 border rounded-md"
-                    >
-                      <p className="text-sm truncate pr-2">{s.title}</p>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveRelated(s._id)}
-                        className="p-1 text-red-500 hover:bg-red-100 rounded-full"
-                        title="Exclude"
-                      >
-                        <FiX size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
           <FormTextarea
             label="Full Text"
             name="text"
-            value={formData.text || ""}
+            value={formData.text}
             onChange={handleChange}
             rows={5}
           />
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ImageUrlInput
-              value={formData.imageUrl || ""}
+              value={formData.imageUrl}
               onChange={handleChange}
               onOpenGallery={onOpenGallery}
             />
             <FormInput
               label="Video URL"
               name="videoUrl"
-              value={formData.videoUrl || ""}
+              value={formData.videoUrl}
               onChange={handleChange}
             />
             <FormInput
               label="Source URL"
               name="url"
-              value={formData.url || ""}
+              value={formData.url}
               onChange={handleChange}
             />
             <FormInput
               label="Twitter URL"
               name="twitterUrl"
-              value={formData.twitterUrl || ""}
+              value={formData.twitterUrl}
               onChange={handleChange}
             />
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
               label="Source Name"
               name="source"
@@ -1218,8 +908,76 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
               options={POST_TYPES}
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
+              Tags
+            </label>
+            <div className="p-2 bg-gray-50 rounded-lg border flex flex-wrap gap-2 items-center">
+              {(formData.tags || []).map((tag) => (
+                <div
+                  key={tag}
+                  className="flex items-center gap-1.5 bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full"
+                >
+                  {tag}
+                  <button type="button" onClick={() => handleRemoveTag(tag)}>
+                    <FiX size={14} />
+                  </button>
+                </div>
+              ))}
+              <input
+                type="text"
+                value={tagInput}
+                onChange={handleTagChange}
+                onKeyDown={handleAddTag}
+                onBlur={handleAddTag}
+                placeholder="Add a tag and press Enter"
+                className="flex-1 bg-transparent focus:outline-none p-1"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Use 'link:your-topic' for manual linking of related stories.
+            </p>
+          </div>
+
+          {/* ✅ NEW: Related Stories Preview Section */}
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">
+              Related Stories (Include/Exclude)
+            </label>
+            <div className="p-3 bg-gray-50 rounded-lg border min-h-[60px]">
+              {!formData.relatedStories ||
+              formData.relatedStories.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  No related stories linked yet.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {formData.relatedStories.map((story) => (
+                    <div
+                      key={story._id}
+                      className="flex items-center justify-between bg-white p-2 border rounded-md"
+                    >
+                      <p className="text-sm text-gray-800 truncate pr-2">
+                        {story.title}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRelatedStory(story._id)}
+                        className="p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full"
+                        title="Exclude Story"
+                      >
+                        <FiX size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-2">
               Categories
             </label>
             <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-lg border">
@@ -1230,8 +988,8 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
                   onClick={() => handleCategoriesChange(cat)}
                   className={`px-3 py-1.5 text-sm rounded-full border-2 ${
                     formData.categories?.includes(cat)
-                      ? "bg-blue-600 text-white"
-                      : "bg-white"
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white hover:bg-gray-200 border-gray-300"
                   }`}
                 >
                   {cat}
@@ -1239,7 +997,8 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
               ))}
             </div>
           </div>
-          <div className="grid md:grid-cols-2 gap-4 border-t pt-4">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
             <FormInput
               type="datetime-local"
               label="Schedule Publication"
@@ -1269,6 +1028,7 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
               min="1"
             />
           </div>
+
           <div className="flex items-center gap-x-6 pt-2">
             <FormCheckbox
               label="Publish"
@@ -1288,13 +1048,13 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-lg border font-semibold"
+            className="px-5 py-2 rounded-lg border font-semibold text-gray-700 hover:bg-gray-200"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold"
+            className="px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-semibold"
           >
             Save Post
           </button>
@@ -1306,137 +1066,145 @@ function PostFormModal({ post, onSave, onClose, onOpenGallery }) {
 
 const FormInput = memo(({ label, ...props }) => (
   <div>
-    {" "}
     <label className="block text-sm font-medium text-gray-600 mb-1">
       {label}
-    </label>{" "}
+    </label>
     <input
-      className="w-full border rounded-lg px-3 py-2 bg-gray-50 focus:border-blue-500"
+      className="w-full border rounded-lg px-3 py-2 bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
       {...props}
-    />{" "}
+    />
   </div>
 ));
+
 const FormTextarea = memo(({ label, ...props }) => (
   <div>
-    {" "}
     <label className="block text-sm font-medium text-gray-600 mb-1">
       {label}
-    </label>{" "}
+    </label>
     <textarea
-      className="w-full border rounded-lg px-3 py-2 bg-gray-50 focus:border-blue-500"
+      className="w-full border rounded-lg px-3 py-2 bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
       {...props}
-    />{" "}
+    />
   </div>
 ));
+
 const FormSelect = memo(({ label, options, ...props }) => (
   <div>
-    {" "}
     <label className="block text-sm font-medium text-gray-600 mb-1">
       {label}
-    </label>{" "}
+    </label>
     <select
-      className="w-full border rounded-lg px-3 py-2 bg-gray-50 focus:border-blue-500"
+      className="w-full border rounded-lg px-3 py-2 bg-gray-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
       {...props}
     >
-      {" "}
       {options.map((opt) => (
         <option key={opt} value={opt}>
           {opt.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
         </option>
-      ))}{" "}
-    </select>{" "}
+      ))}
+    </select>
   </div>
 ));
+
 const FormCheckbox = memo(({ label, ...props }) => (
   <div className="flex items-center gap-2">
-    {" "}
     <input
       type="checkbox"
       id={props.name}
-      className="h-4 w-4 rounded border-gray-300 text-blue-600"
+      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
       {...props}
-    />{" "}
-    <label htmlFor={props.name} className="text-sm font-medium">
+    />
+    <label htmlFor={props.name} className="text-sm font-medium text-gray-700">
       {label}
-    </label>{" "}
+    </label>
   </div>
 ));
+
 const ImageUrlInput = ({ value, onChange, onOpenGallery }) => (
   <div>
-    {" "}
-    <label className="block text-sm font-medium mb-1">Image URL</label>{" "}
+    <label className="block text-sm font-medium text-gray-600 mb-1">
+      Image URL
+    </label>
     <div className="flex gap-2">
-      {" "}
       <input
         name="imageUrl"
         value={value || ""}
         onChange={onChange}
         className="flex-1 border rounded-lg px-3 py-2 bg-gray-50"
         placeholder="https://..."
-      />{" "}
+      />
       <button
         type="button"
         onClick={onOpenGallery}
-        className="px-3 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-1"
+        className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold flex items-center gap-1"
+        title="Select from saved images"
       >
         <FiImage size={18} />
         <span className="hidden sm:inline">Gallery</span>
-      </button>{" "}
-    </div>{" "}
+      </button>
+    </div>
   </div>
 );
+
 function ImageGalleryModal({ onSelectImage, onClose }) {
   const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
-    async function fetchImages() {
+    const fetchImages = async () => {
+      setLoading(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/images?limit=100`);
+        const res = await fetch(`${API_BASE_URL}/images?page=1&limit=100`);
         const data = await res.json();
         if (data.status === "success") setImages(data.images);
       } catch (e) {
         toast.error("Failed to load images.");
+      } finally {
+        setLoading(false);
       }
-    }
+    };
     fetchImages();
   }, []);
   return (
     <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
-      {" "}
-      <div className="bg-white w-full max-w-5xl h-[90vh] rounded-xl flex flex-col">
-        {" "}
-        <div className="p-5 border-b flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Select Image</h2>
-          <button type="button" onClick={onClose}>
+      <div className="bg-white w-full max-w-5xl h-full max-h-[90vh] rounded-xl shadow-2xl flex flex-col">
+        <div className="flex justify-between items-center p-5 border-b">
+          <h2 className="text-2xl font-bold text-gray-800">Select Image</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-700 text-2xl"
+          >
             <FiXCircle />
           </button>
-        </div>{" "}
+        </div>
         <div className="flex-1 p-4 overflow-y-auto">
-          {" "}
-          <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-3">
-            {" "}
-            {images.map((img) => (
-              <div
-                key={img._id}
-                className="relative w-full aspect-square rounded-lg cursor-pointer group"
-                onClick={() => onSelectImage(img.imageUrl)}
-              >
-                {" "}
-                <img
-                  src={img.imageUrl}
-                  alt={img.title || ""}
-                  className="w-full h-full object-cover group-hover:scale-105"
-                />{" "}
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <FiCheck
-                    size={30}
-                    className="text-white bg-blue-600 rounded-full p-1"
+          {loading ? (
+            <div className="text-center">Loading...</div>
+          ) : (
+            <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-8 gap-3">
+              {images.map((img) => (
+                <div
+                  key={img._id}
+                  className="relative w-full aspect-square overflow-hidden rounded-lg cursor-pointer group"
+                  onClick={() => onSelectImage(img.imageUrl)}
+                >
+                  <img
+                    src={img.imageUrl}
+                    alt={img.title || "Gallery Image"}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                   />
-                </div>{" "}
-              </div>
-            ))}{" "}
-          </div>{" "}
-        </div>{" "}
-      </div>{" "}
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <FiCheck
+                      size={30}
+                      className="text-white bg-blue-600 rounded-full p-1"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

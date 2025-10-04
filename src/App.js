@@ -11,11 +11,13 @@ import Ft from "./news/Ft";
 import ANmockup from "./news/ANmockup";
 import NewsParse from "./news/NewsParse";
 import NewsWeb from "./news/NewsWeb";
+import AdminDashboard from "./Admin";
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<NewsWeb />} />
+      <Route path="/admin" element={<AdminDashboard />} />
       
       <Route path="/news" element={<NewsPage />} />
       <Route path="/news-dashboard" element={<NewDashboard />} />

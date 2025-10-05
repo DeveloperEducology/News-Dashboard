@@ -287,4 +287,50 @@ export default function App() {
                         </div>
                         <div>
                             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                            <select id="category" name="category" value={filters.category} onChange={handleFilterChange} className="mt-1 bl
+                            <select id="category" name="category" value={filters.category} onChange={handleFilterChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"><option value="">All Categories</option>{ALL_CATEGORIES.map((c) => (<option key={c} value={c}>{c}</option>))}</select>
+                        </div>
+                        <button onClick={clearFilters} className="w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">Clear Filters</button>
+                    </div>
+                </div>
+                <div className="hidden lg:block">
+                    <div className="bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 font-medium text-center w-full h-[600px]">
+                        <span>Advertisement</span>
+                        <p className="text-sm">300 x 600</p>
+                    </div>
+                </div>
+            </aside>
+          </div>
+        </div>
+      </main>
+
+      <footer className="bg-gray-800 text-gray-300 pt-12 mt-16" role="contentinfo">
+         {/* Footer content remains the same */}
+         <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+               <div className="md:col-span-2 lg:col-span-1">
+                  <h3 className="font-serif text-2xl font-bold text-amber-400 flex items-center gap-2 mb-4"><NewspaperIcon /> NewsHub</h3>
+                  <p className="text-sm mb-4">Your trusted source for breaking news and in-depth analysis from around the world.</p>
+                  <div className="flex items-center gap-3">
+                     <a href="#" aria-label="Facebook" className="p-2 rounded-full bg-gray-700 hover:bg-amber-400 hover:text-gray-900 transition-colors duration-200"><FacebookIcon /></a>
+                     <a href="#" aria-label="Twitter" className="p-2 rounded-full bg-gray-700 hover:bg-amber-400 hover:text-gray-900 transition-colors duration-200"><TwitterIcon /></a>
+                     <a href="#" aria-label="Instagram" className="p-2 rounded-full bg-gray-700 hover:bg-amber-400 hover:text-gray-900 transition-colors duration-200"><InstagramIcon /></a>
+                     <a href="#" aria-label="YouTube" className="p-2 rounded-full bg-gray-700 hover:bg-amber-400 hover:text-gray-900 transition-colors duration-200"><YoutubeIcon /></a>
+                  </div>
+               </div>
+               <div><h4 className="font-bold text-white mb-4">News Categories</h4><ul className="space-y-2 text-sm">{["Politics", "Technology", "Sports", "Business", "Health"].map((cat) => (<li key={cat}><a href="#" className="hover:text-amber-400">{cat}</a></li>))}</ul></div>
+               <div><h4 className="font-bold text-white mb-4">About Us</h4><ul className="space-y-2 text-sm">{["Our Team", "Contact Us", "Careers", "Advertise"].map((link) => (<li key={link}><a href="#" className="hover:text-amber-400">{link}</a></li>))}</ul></div>
+               <div><h4 className="font-bold text-white mb-4">Legal</h4><ul className="space-y-2 text-sm">{["Privacy Policy", "Terms of Service", "Cookie Policy"].map((link) => (<li key={link}><a href="#" className="hover:text-amber-400">{link}</a></li>))}</ul></div>
+            </div>
+            <div className="flex flex-col md:flex-row justify-between items-center text-sm py-6 border-t border-gray-700">
+               <p className="text-gray-400 mb-4 md:mb-0">&copy; {new Date().getFullYear()} NewsHub. All rights reserved.</p>
+               <div className="flex items-center gap-4">
+                  <a href="#" className="hover:text-amber-400">Sitemap</a>
+                  <a href="#" className="hover:text-amber-400">RSS Feed</a>
+                  <a href="#" className="hover:text-amber-400">Newsletter</a>
+               </div>
+            </div>
+         </div>
+      </footer>
+    </div>
+  );
+}

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tweet Embed</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding-top: 40px;
+        }
+
+        #container {
+            max-width: 550px;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #instructions {
+            background-color: #ffffff;
+            border: 1px solid #dddfe2;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            color: #1c1e21;
+        }
+
+        #instructions h2 {
+            margin: 0 0 10px 0;
+            font-size: 20px;
+        }
+
+        #instructions p {
+            margin: 0;
+            font-size: 16px;
+            color: #606770;
+        }
+
+        #instructions code {
+            background-color: #e7f3ff;
+            color: #1b74e4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <div id="tweet-container"></div>
+        
+        <div id="instructions" style="display: none;">
+            <h2>No Tweet URL Provided</h2>
+            <p>To view a tweet, add its URL as a parameter in the address bar.</p>
+            <p style="margin-top: 15px;">
+                <strong>Example:</strong><br>
+                <code>?url=https://x.com/i/status/1974115460972228905</code>
+            </p>
+        </div>
+    </div>
+
+    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+    <script>
+        window.onload = function() {
+            const tweetContainer = document.getElementById('tweet-container');
+            const instructionsContainer = document.getElementById('instructions');
+
+            // Get the URL parameters
+            const params = new URLSearchParams(window.location.search);
+            const twitterUrl = params.get('url');
+
+            // Regular expression to extract the Tweet ID from a Twitter/X URL
+            const tweetIdRegex = /(?:twitter\.com|x\.com)\/[a-zA-Z0-9_]+\/status\/(\d+)/;
+
+            if (twitterUrl && tweetIdRegex.test(twitterUrl)) {
+                const tweetId = twitterUrl.match(tweetIdRegex)[1];
+                
+                // Use Twitter's widget API to create the tweet embed
+                // This ensures it renders correctly even after the page has loaded
+                window.twttr.ready(function(twttr) {
+                    twttr.widgets.createTweet(
+                        tweetId,
+                        tweetContainer,
+                        {
+                            theme: 'light', // Can be 'light' or 'dark'
+                            align: 'center'
+                        }
+                    ).then(function (el) {
+                        // Success - the element 'el' is the rendered tweet
+                        if (!el) {
+                            tweetContainer.innerHTML = '<p style="color: red; text-align: center;">Could not load Tweet. It may have been deleted or the URL is incorrect.</p>';
+                        }
+                    });
+                });
+
+            } else {
+                // If no valid URL is found, show the instructions
+                instructionsContainer.style.display = 'block';
+            }
+        };
+    </script>
+
+</body>
+</html>

@@ -82,9 +82,50 @@ export default function PostsListPage({ onOpenModal }) {
     setQuickPostText("");
   };
   
+  /**
+   * FIX: Implemented the direct publish logic.
+   * This function creates and publishes a post directly without opening the modal.
+   */
   const handleQuickPublish = () => {
-     // TODO: Implement direct publish logic
-     toast.error("Direct publish not yet implemented.");
+    if (!quickPostText.trim()) {
+      toast.error("Please paste some text to publish.");
+      return;
+    }
+    
+    setIsPublishingQuick(true);
+
+    const lines = quickPostText.trim().split('\n');
+    const newPostPayload = {
+        ...DEFAULT_POST_STATE,
+        title: lines[0] || 'Untitled Post',
+        summary: lines.slice(1).join('\n').trim(),
+        isPublished: true, // Ensure the post is published
+    };
+
+    const promise = fetch(`${API_BASE_URL}/post`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newPostPayload),
+    })
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+      if (!ok) {
+        throw new Error(data.error || 'Failed to publish post.');
+      }
+      return data;
+    });
+
+    toast.promise(promise, {
+      loading: 'Publishing post...',
+      success: () => {
+        setQuickPostText(''); // Clear the textarea on success
+        fetchPosts(page, filters); // Refresh the list of posts
+        return 'Post published successfully!';
+      },
+      error: (err) => `Error: ${err.message}`,
+    }).finally(() => {
+      setIsPublishingQuick(false); // Reset the button state
+    });
   };
 
   const handleBulkDelete = () => {
@@ -115,7 +156,7 @@ export default function PostsListPage({ onOpenModal }) {
   };
 
   const handleToggleSelectAll = () => {
-    if (selectedPosts.size === posts.length) {
+    if (selectedPosts.size === posts.length && posts.length > 0) {
       setSelectedPosts(new Set());
     } else {
       setSelectedPosts(new Set(posts.map((p) => p._id)));

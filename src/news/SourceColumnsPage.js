@@ -7,7 +7,7 @@ import { Toaster, toast } from "react-hot-toast";
 
 // --- CONFIGURATION ---
 // const API_BASE_URL = "http://localhost:4000/api";
-const API_BASE_URL = "https://twitterapi-node.onrender.com//api";
+const API_BASE_URL = "https://twitterapi-node.onrender.com/api";
 const POSTS_PER_SOURCE_COLUMN = 15;
 const RECENT_POST_MINUTES = 59; // Articles newer than this (in minutes) get a "Latest" tag
 const DEFAULT_POST_STATE = {

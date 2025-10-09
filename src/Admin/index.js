@@ -14,7 +14,7 @@ import StickyPostsPage from "./pages/StickyPostsPage";
 import FetchTweetPage from "./pages/FetchTweetPage";
 import JsonParserPage from "./pages/JsonParserPage";
 import SettingsPage from "./pages/SettingsPage";
-
+import VideoManagementPage from "./pages/VideoManagementPage";
 // Constants
 import { API_BASE_URL, DEFAULT_POST_STATE } from "./constants/config";
 
@@ -104,6 +104,8 @@ export default function AdminDashboard() {
     switch (view) {
       case "posts":
         return <PostsListPage onOpenModal={handleOpenModal} />;
+      case "videos":
+        return <VideoManagementPage />;
       case "sticky-posts":
         return <StickyPostsPage onOpenModal={handleOpenModal} />;
       case "fetch-tweet":

@@ -19,6 +19,7 @@ export default function Sidebar({ currentView, setView, isOpen, setIsOpen }) {
   const navItems = [
     { viewName: "dashboard", icon: <FiHome />, text: "Dashboard" },
     { viewName: "posts", icon: <FiFileText />, text: "Posts" },
+    { viewName: "videos", icon: <FiFileText />, text: "Videos" },
     { viewName: "sticky-posts", icon: <FiTrendingUp />, text: "Sticky Posts" },
     { viewName: "fetch-tweet", icon: <FiTwitter />, text: "Fetch from Tweet" },
     { viewName: "json-parser", icon: <FiCode />, text: "JSON Parser" },

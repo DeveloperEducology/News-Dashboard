@@ -12,6 +12,7 @@ import ANmockup from "./news/ANmockup";
 import NewsParse from "./news/NewsParse";
 import NewsWeb from "./news/NewsWeb";
 import AdminDashboard from "./Admin";
+import SourceColumnsPage from "./news/SourceColumnsPage";
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
       <Route path="/news-dashboard" element={<NewDashboard />} />
       <Route path="/embed" element={<EmbedSocialPage />} />
       <Route path="/twi" element={<TwitterNodeList />} />
+      <Route path="/sou" element={<SourceColumnsPage />} />
       <Route path="/ft" element={<FetchTweet />} />
       <Route path="/ft1" element={<Ft />} />
       <Route path="/new" element={<NewArticle />} />

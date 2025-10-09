@@ -36,7 +36,7 @@ const VideoManagementPage = () => {
   const [selectedSource, setSelectedSource] = useState('');
 
   // const API_BASE_URL = 'http://localhost:4000/api';
-  const API_BASE_URL = 'https://twitterapi-node.onrender.com//api';
+  const API_BASE_URL = 'https://twitterapi-node.onrender.com/api';
 
   // --- Data Fetching ---
   const fetchVideos = useCallback(async (page, sFilter = statusFilter, srcFilter = sourceFilter) => {

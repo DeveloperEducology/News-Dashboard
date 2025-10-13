@@ -1,5 +1,5 @@
 import React from "react";
-import { FiHome, FiFileText, FiSettings, FiTrendingUp, FiTwitter, FiCode } from "react-icons/fi";
+import { FiHome, FiFileText, FiSettings, FiTrendingUp, FiTwitter, FiCode, FiYoutube } from "react-icons/fi";
 
 const NavItem = ({ viewName, icon, text, currentView, setView, setIsOpen }) => (
   <button
@@ -23,6 +23,7 @@ export default function Sidebar({ currentView, setView, isOpen, setIsOpen }) {
     { viewName: "sticky-posts", icon: <FiTrendingUp />, text: "Sticky Posts" },
     { viewName: "fetch-tweet", icon: <FiTwitter />, text: "Fetch from Tweet" },
     { viewName: "json-parser", icon: <FiCode />, text: "JSON Parser" },
+    { viewName: "youtube", icon: <FiYoutube />, text: "youtube" },
     { viewName: "settings", icon: <FiSettings />, text: "Settings" },
   ];
 

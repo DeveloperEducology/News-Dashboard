@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { FiX, FiSearch, FiPlus } from "react-icons/fi";
+import { FiX, FiSearch, FiPlus, FiTrash2 } from "react-icons/fi";
 import {
   DEFAULT_POST_STATE,
   ALL_CATEGORIES,
@@ -12,9 +12,7 @@ import {
   FormTextarea,
   FormSelect,
   FormCheckbox,
-  ImageUrlInput,
 } from "./FormElements";
-// NEW: Import the useDebounce hook
 import useDebounce from "../hooks/useDebounce";
 
 export default function PostFormModal({
@@ -28,11 +26,10 @@ export default function PostFormModal({
   const [allTags, setAllTags] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
 
-  // --- NEW: State for related stories search ---
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const debouncedSearchQuery = useDebounce(searchQuery, 500); // Debounce search input by 500ms
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
   useEffect(() => {
     const fetchTags = async () => {
@@ -50,31 +47,59 @@ export default function PostFormModal({
   }, []);
 
   useEffect(() => {
-    const initialData = post
-      ? {
-          ...DEFAULT_POST_STATE,
-          ...post,
-          tags:
-            post.tags
-              ?.map((t) => (typeof t === "object" ? t.name : t))
-              .filter(Boolean) || [],
-        }
-      : DEFAULT_POST_STATE;
+    if (!post) {
+      setFormData(DEFAULT_POST_STATE);
+      return;
+    }
+
+    const normalizedPost = { ...post };
+
+    // Normalize _id
+    if (normalizedPost._id?.$oid) {
+      normalizedPost._id = normalizedPost._id.$oid;
+    }
+
+    // Normalize date fields
+    const dateFields = [
+      "scheduledFor",
+      "createdAt",
+      "publishedAt",
+      "updatedAt",
+    ];
+    dateFields.forEach((field) => {
+      if (normalizedPost[field]?.$date) {
+        normalizedPost[field] = normalizedPost[field].$date;
+      }
+    });
+
+    // Ensure media is always an array
+    if (!normalizedPost.media) {
+      normalizedPost.media = [];
+    }
+
+    // Normalize tags
+    const normalizedTags =
+      post.tags
+        ?.map((t) => (typeof t === "object" ? t.name : t))
+        .filter(Boolean) || [];
+
+    const initialData = {
+      ...DEFAULT_POST_STATE,
+      ...normalizedPost,
+      tags: normalizedTags,
+    };
+
     setFormData(initialData);
   }, [post]);
 
-  // --- NEW: Effect to handle searching for posts ---
   useEffect(() => {
-    // Don't search for very short queries
     if (debouncedSearchQuery.trim().length < 2) {
       setSearchResults([]);
       return;
     }
-
     const searchPosts = async () => {
       setIsSearching(true);
       try {
-        // Assuming your API has a search endpoint like this
         const res = await fetch(
           `${API_BASE_URL}/posts/search?q=${debouncedSearchQuery}`
         );
@@ -83,7 +108,6 @@ export default function PostFormModal({
           const currentRelatedIds = new Set(
             formData.relatedStories.map((s) => s._id)
           );
-          // Filter out the current post and already related posts
           const filteredResults = data.posts.filter(
             (p) => p._id !== formData._id && !currentRelatedIds.has(p._id)
           );
@@ -91,15 +115,13 @@ export default function PostFormModal({
         }
       } catch (error) {
         toast.error("Failed to search for posts.");
-        setSearchResults([]);
       } finally {
         setIsSearching(false);
       }
     };
-
     searchPosts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearchQuery, formData._id]); // We don't add formData.relatedStories here to avoid re-fetching when adding a story
+  }, [debouncedSearchQuery, formData._id]);
 
   const handleChange = (e) =>
     setFormData((prev) => ({
@@ -107,6 +129,49 @@ export default function PostFormModal({
       [e.target.name]:
         e.target.type === "checkbox" ? e.target.checked : e.target.value,
     }));
+
+  const handleMediaChange = (index, field, value) => {
+    setFormData((prev) => {
+      const newMedia = [...(prev.media || [])];
+      newMedia[index] = { ...newMedia[index], [field]: value };
+      return { ...prev, media: newMedia };
+    });
+  };
+
+  const addMediaItem = () => {
+    setFormData((prev) => ({
+      ...prev,
+      media: [
+        ...(prev.media || []),
+        { type: "photo", url: "", altText: "", overlayPosition: "middle" },
+      ],
+    }));
+  };
+
+  const removeMediaItem = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      media: (prev.media || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  // --- UPDATED: handleSubmit logic ---
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const finalFormData = { ...formData };
+
+    // If imageUrl is blank AND the media array has items, use the first media item's url as a fallback.
+    // Otherwise, the manually entered imageUrl is preserved.
+    if (
+      !finalFormData.imageUrl &&
+      finalFormData.media &&
+      finalFormData.media.length > 0
+    ) {
+      finalFormData.imageUrl = finalFormData.media[0].url;
+    }
+
+    onSave(finalFormData);
+  };
 
   const handleCategoriesChange = (category) => {
     const current = formData.categories || [];
@@ -125,19 +190,13 @@ export default function PostFormModal({
     }));
   };
 
-  // --- NEW: Handler to add a search result to related stories ---
   const handleAddRelated = (story) => {
     setFormData((prev) => ({
       ...prev,
       relatedStories: [...(prev.relatedStories || []), story],
     }));
-    setSearchQuery(""); // Clear search input
-    setSearchResults([]); // Clear search results
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(formData);
+    setSearchQuery("");
+    setSearchResults([]);
   };
 
   const handleTagInputChange = (e) => {
@@ -202,6 +261,7 @@ export default function PostFormModal({
             &times;
           </button>
         </div>
+
         <div className="p-6 space-y-5 overflow-y-auto">
           <FormInput
             label="Title"
@@ -256,12 +316,77 @@ export default function PostFormModal({
                 </div>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Use 'link:your-topic' for manual linking.
-            </p>
           </div>
 
-          {/* --- UPDATED: Related Stories Section with Search --- */}
+          {/* --- NEW: Dedicated imageUrl Input --- */}
+          <FormInput
+            label="Featured Image URL"
+            name="imageUrl"
+            value={formData.imageUrl || ""}
+            onChange={handleChange}
+            placeholder="https://... (from RSS or manual entry)"
+          />
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Media Gallery
+            </label>
+            <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+              {(formData.media || []).map((item, index) => (
+                <div
+                  key={index}
+                  className="p-3 bg-white border rounded-md shadow-sm relative"
+                >
+                  <button
+                    type="button"
+                    onClick={() => removeMediaItem(index)}
+                    className="absolute top-2 right-2 p-1 text-red-500 hover:bg-red-100 rounded-full"
+                    title="Remove Media Item"
+                  >
+                    <FiTrash2 size={16} />
+                  </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormInput
+                      label={`Media URL #${index + 1}`}
+                      placeholder="https://..."
+                      value={item.url}
+                      onChange={(e) =>
+                        handleMediaChange(index, "url", e.target.value)
+                      }
+                    />
+                    <FormInput
+                      label="Alt Text"
+                      placeholder="Describe the image"
+                      value={item.altText}
+                      onChange={(e) =>
+                        handleMediaChange(index, "altText", e.target.value)
+                      }
+                    />
+                    <FormSelect
+                      label="Overlay Position"
+                      value={item.overlayPosition}
+                      onChange={(e) =>
+                        handleMediaChange(
+                          index,
+                          "overlayPosition",
+                          e.target.value
+                        )
+                      }
+                      options={["top", "middle", "bottom"]}
+                    />
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addMediaItem}
+                className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg text-blue-600 hover:bg-blue-50"
+              >
+                <FiPlus /> Add Media Item
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1">
               Related Stories
@@ -273,11 +398,10 @@ export default function PostFormModal({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by title, summary, or tags to add..."
+                  placeholder="Search to add related stories..."
                   className="w-full bg-transparent focus:outline-none p-2"
                 />
               </div>
-              {/* Search Results Dropdown */}
               {(isSearching || searchResults.length > 0) && (
                 <div className="absolute z-20 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
                   {isSearching && (
@@ -297,11 +421,8 @@ export default function PostFormModal({
                 </div>
               )}
             </div>
-
-            {/* Display of currently related stories */}
             <div className="mt-2 p-3 bg-gray-50 rounded-lg border min-h-[60px]">
-              {!formData.relatedStories ||
-              formData.relatedStories.length === 0 ? (
+              {(formData.relatedStories?.length || 0) === 0 ? (
                 <p className="text-sm text-gray-500">
                   No related stories added.
                 </p>
@@ -337,11 +458,6 @@ export default function PostFormModal({
           />
 
           <div className="grid md:grid-cols-2 gap-4">
-            <ImageUrlInput
-              value={formData.imageUrl || ""}
-              onChange={handleChange}
-              onOpenGallery={onOpenGallery}
-            />
             <FormInput
               label="Video URL"
               name="videoUrl"
@@ -458,6 +574,7 @@ export default function PostFormModal({
             />
           </div>
         </div>
+
         <div className="flex justify-end gap-3 mt-auto p-5 bg-gray-50 border-t">
           <button
             type="button"

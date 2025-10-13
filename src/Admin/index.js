@@ -17,6 +17,7 @@ import SettingsPage from "./pages/SettingsPage";
 import VideoManagementPage from "./pages/VideoManagementPage";
 // Constants
 import { API_BASE_URL, DEFAULT_POST_STATE } from "./constants/config";
+import YouTubePostForm from "./pages/YouTubePostForm";
 
 export default function AdminDashboard() {
   const [view, setView] = useState("dashboard");
@@ -112,6 +113,8 @@ export default function AdminDashboard() {
         return <FetchTweetPage onOpenModal={handleOpenModal} />;
       case "json-parser":
         return <JsonParserPage />;
+      case "youtube":
+        return <YouTubePostForm />;
       case "settings":
         return <SettingsPage />;
       case "dashboard":

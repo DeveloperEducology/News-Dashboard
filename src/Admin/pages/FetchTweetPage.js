@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { toast } from 'react-hot-toast';
-import { FiTwitter } from 'react-icons/fi';
-import { API_BASE_URL } from '../constants/config';
+import React, { useState } from "react";
+import { toast } from "react-hot-toast";
+import { FiTwitter } from "react-icons/fi";
+import { API_BASE_URL } from "../constants/config";
 
 export default function FetchTweetPage({ onOpenModal }) {
   const [tweetId, setTweetId] = useState("");
@@ -28,13 +28,21 @@ export default function FetchTweetPage({ onOpenModal }) {
     })
       .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
       .then(({ ok, data }) => {
-        if (!ok || data.status !== "success" || !data.successfulPosts || data.successfulPosts.length === 0) {
-          throw new Error(data.message || "Tweet could not be processed or already exists.");
+        if (
+          !ok ||
+          data.status !== "success" ||
+          !data.successfulPosts ||
+          data.successfulPosts.length === 0
+        ) {
+          throw new Error(
+            data.message || "Tweet could not be processed or already exists."
+          );
         }
         return data.successfulPosts[0];
       });
 
-    toast.promise(promise, {
+    toast
+      .promise(promise, {
         loading: "Fetching and creating post...",
         success: (createdPost) => {
           onOpenModal(createdPost);
@@ -67,7 +75,14 @@ export default function FetchTweetPage({ onOpenModal }) {
           disabled={isLoading}
           className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-lg"
         >
-          {isLoading ? "Processing..." : <> <FiTwitter /> Fetch & Edit </>}
+          {isLoading ? (
+            "Processing..."
+          ) : (
+            <>
+              {" "}
+              <FiTwitter /> Fetch & Edit{" "}
+            </>
+          )}
         </button>
       </div>
     </div>

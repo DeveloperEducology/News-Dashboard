@@ -3,9 +3,25 @@ export const API_BASE_URL = "https://twitterapi-node.onrender.com/api";
 export const POSTS_PER_PAGE = 10;
 
 export const ALL_CATEGORIES = [
-  "General", "Politics", "Astrology", "Sports", "Entertainment", "Technology",
-  "Business", "Education", "Health", "Science", "International", "National",
-  "Crime", "Telangana", "AndhraPradesh", "Viral", "Photos", "Videos", "Lifestyle",
+  "General",
+  "Politics",
+  "Astrology",
+  "Sports",
+  "Entertainment",
+  "Technology",
+  "Business",
+  "Education",
+  "Health",
+  "Science",
+  "International",
+  "National",
+  "Crime",
+  "Telangana",
+  "AndhraPradesh",
+  "Viral",
+  "Photos",
+  "Videos",
+  "Lifestyle",
 ];
 
 export const POST_TYPES = ["normal_post", "full_post", "youtube_video"];
@@ -29,4 +45,5 @@ export const DEFAULT_POST_STATE = {
   relatedStories: [],
   scheduledFor: null,
   pinnedIndex: null,
+  stackedImages: [], // ✅ ADDED: New field for stacked images
 };

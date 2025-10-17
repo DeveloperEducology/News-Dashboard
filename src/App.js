@@ -13,12 +13,14 @@ import NewsParse from "./news/NewsParse";
 import NewsWeb from "./news/NewsWeb";
 import AdminDashboard from "./Admin";
 import SourceColumnsPage from "./news/SourceColumnsPage";
+import Playground from "./news/Playground";
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<NewsWeb />} />
       <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/play" element={<Playground />} />
       
       <Route path="/news" element={<NewsPage />} />
       <Route path="/news-dashboard" element={<NewDashboard />} />

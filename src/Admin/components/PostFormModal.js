@@ -72,9 +72,12 @@ export default function PostFormModal({
       }
     });
 
-    // Ensure media is always an array
+    // Ensure media and stackedImages are always arrays
     if (!normalizedPost.media) {
       normalizedPost.media = [];
+    }
+    if (!normalizedPost.stackedImages) { // ✅ ADDED
+      normalizedPost.stackedImages = [];
     }
 
     // Normalize tags
@@ -155,13 +158,40 @@ export default function PostFormModal({
     }));
   };
 
+  // ✅ ADDED: Handlers for stackedImages
+  const handleStackedImageChange = (index, field, value) => {
+    setFormData((prev) => {
+      const newStackedImages = [...(prev.stackedImages || [])];
+      // Ensure flex is stored as a number
+      const finalValue = field === 'flex' ? parseInt(value, 10) || 0 : value;
+      newStackedImages[index] = { ...newStackedImages[index], [field]: finalValue };
+      return { ...prev, stackedImages: newStackedImages };
+    });
+  };
+
+  const addStackedImageItem = () => {
+    setFormData((prev) => ({
+      ...prev,
+      stackedImages: [
+        ...(prev.stackedImages || []),
+        { uri: "", flex: 2 }, // Default flex of 2
+      ],
+    }));
+  };
+
+  const removeStackedImageItem = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      stackedImages: (prev.stackedImages || []).filter((_, i) => i !== index),
+    }));
+  };
+
+
   // --- UPDATED: handleSubmit logic ---
   const handleSubmit = (e) => {
     e.preventDefault();
     const finalFormData = { ...formData };
 
-    // If imageUrl is blank AND the media array has items, use the first media item's url as a fallback.
-    // Otherwise, the manually entered imageUrl is preserved.
     if (
       !finalFormData.imageUrl &&
       finalFormData.media &&
@@ -263,7 +293,8 @@ export default function PostFormModal({
         </div>
 
         <div className="p-6 space-y-5 overflow-y-auto">
-          <FormInput
+          {/* ... Other form fields (Title, Summary, Tags, etc.) ... */}
+           <FormInput
             label="Title"
             name="title"
             value={formData.title}
@@ -317,8 +348,7 @@ export default function PostFormModal({
               )}
             </div>
           </div>
-
-          {/* --- NEW: Dedicated imageUrl Input --- */}
+          
           <FormInput
             label="Featured Image URL"
             name="imageUrl"
@@ -386,7 +416,60 @@ export default function PostFormModal({
               </button>
             </div>
           </div>
-
+          
+          {/* ✅ ADDED: UI Section for Stacked Images */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Horizontally Stacked Images
+            </label>
+            <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+              {(formData.stackedImages || []).map((item, index) => (
+                <div
+                  key={index}
+                  className="p-3 bg-white border rounded-md shadow-sm relative"
+                >
+                  <button
+                    type="button"
+                    onClick={() => removeStackedImageItem(index)}
+                    className="absolute top-2 right-2 p-1 text-red-500 hover:bg-red-100 rounded-full"
+                    title="Remove Stacked Image"
+                  >
+                    <FiTrash2 size={16} />
+                  </button>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                      <FormInput
+                        label={`Image URL #${index + 1}`}
+                        placeholder="https://..."
+                        value={item.uri}
+                        onChange={(e) =>
+                          handleStackedImageChange(index, "uri", e.target.value)
+                        }
+                      />
+                    </div>
+                    <FormInput
+                      label="Flex Value"
+                      type="number"
+                      placeholder="e.g., 2"
+                      value={item.flex}
+                      onChange={(e) =>
+                        handleStackedImageChange(index, "flex", e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addStackedImageItem}
+                className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg text-blue-600 hover:bg-blue-50"
+              >
+                <FiPlus /> Add Stacked Image
+              </button>
+            </div>
+          </div>
+          
+          {/* ... Other form sections (Related Stories, Full Text, etc.) ... */}
           <div>
             <label className="block text-sm font-medium mb-1">
               Related Stories

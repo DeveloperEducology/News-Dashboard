@@ -24,7 +24,7 @@ export const ALL_CATEGORIES = [
   "Lifestyle",
 ];
 
-export const POST_TYPES = ["normal_post", "full_post", "youtube_video"];
+export const POST_TYPES = ["normal_post", "full_post", "youtube_video", "breaking", "normal_video", "full_video", "gallery", "banner"];
 
 export const DEFAULT_POST_STATE = {
   title: "",

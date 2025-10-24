@@ -404,6 +404,18 @@ export default function PostFormModal({
                       }
                       options={["top", "middle", "bottom"]}
                     />
+                    <FormSelect
+                      label="objectFit"
+                      value={item.objectFit}
+                      onChange={(e) =>
+                        handleMediaChange(
+                          index,
+                          "objectFit",
+                          e.target.value
+                        )
+                      }
+                      options={["cover", "contain", "repeat", "stretch"]}
+                    />
                   </div>
                 </div>
               ))}

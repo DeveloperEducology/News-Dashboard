@@ -25,6 +25,7 @@ export default function Sidebar({ currentView, setView, isOpen, setIsOpen }) {
     { viewName: "json-parser", icon: <FiCode />, text: "JSON Parser" },
     { viewName: "youtube", icon: <FiYoutube />, text: "youtube" },
     { viewName: "settings", icon: <FiSettings />, text: "Settings" },
+    { viewName: "swiper", icon: <FiSettings />, text: "Swiper Quick Edit" },
   ];
 
   return (

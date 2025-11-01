@@ -1,46 +1,148 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react'; // Added useRef
 import { toast } from 'react-hot-toast';
-import { FiLoader, FiCheck, FiX, FiSave, FiChevronRight, FiChevronLeft, FiInbox } from 'react-icons/fi';
+import { FiLoader, FiCheck, FiX, FiSave, FiChevronRight, FiChevronLeft, FiInbox, FiCopy, FiSearch } from 'react-icons/fi';
 import { API_BASE_URL, ALL_CATEGORIES, DEFAULT_POST_STATE } from '../constants/config';
+
+// NEW: Helper hook for auto-sizing textareas
+const useAutosizeTextArea = (textAreaRef, value) => {
+  useEffect(() => {
+    if (textAreaRef.current) {
+      textAreaRef.current.style.height = "auto"; // Reset height to shrink if needed
+      const scrollHeight = textAreaRef.current.scrollHeight;
+      textAreaRef.current.style.height = scrollHeight + "px"; // Set to new scroll height
+    }
+  }, [textAreaRef, value]);
+};
 
 // This component will hold the editable post card
 function PostEditorCard({ post, setPost, onSave, onSkip, isSaving }) {
+  const titleRef = useRef(null); // Ref for title textarea
+  const summaryRef = useRef(null); // Ref for summary textarea
+
+  // Apply autosizing
+  useAutosizeTextArea(titleRef, post.title);
+  useAutosizeTextArea(summaryRef, post.summary);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setPost((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleCategorySelect = (category) => {
-    setPost((prev) => ({ ...prev, category }));
+    setPost((prev) => ({ ...prev, topCategory: category }));
+  };
+
+  const handleCopyAll = () => {
+    const textToCopy = `${post.title}\n\n${post.summary}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        toast.success('Title and summary copied!');
+      }, (err) => {
+        toast.error('Failed to copy.');
+        console.error('Copy failed', err);
+      });
+    } else {
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast.success('Title and summary copied!');
+      } catch (err) {
+        toast.error('Failed to copy.');
+      }
+    }
+  };
+
+  const handleGoogleSearch = () => {
+    if (!post.title) {
+      toast.error("Please add a title first to search.");
+      return;
+    }
+    const encodedTitle = encodeURIComponent(post.title);
+    window.open(`https://www.google.com/search?tbm=isch&q=${encodedTitle}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg flex flex-col h-full overflow-hidden">
+    // Card no longer has h-full, height is determined by content
+    <div className="bg-white rounded-lg shadow-lg flex flex-col overflow-hidden">
       {/* --- Title Field --- */}
       <div className="p-4 border-b">
-        <label htmlFor="title" className="block text-sm font-semibold text-gray-600 mb-1">Title</label>
-        <input
-          type="text"
+        <div className="flex justify-between items-center mb-1">
+          <label htmlFor="title" className="block text-sm font-semibold text-gray-600">Title</label>
+          <button
+            onClick={handleCopyAll}
+            title="Copy title & summary"
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-indigo-600"
+          >
+            <FiCopy size={14} /> Copy All
+          </button>
+        </div>
+        {/* CHANGED: Converted from input to textarea for auto-grow */}
+        <textarea
           id="title"
           name="title"
+          ref={titleRef}
+          rows="1" // Start as 1 row
           value={post.title}
           onChange={handleInputChange}
-          className="w-full text-lg font-bold border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500"
+          className="w-full text-lg font-bold border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 resize-none overflow-hidden" // Added resize-none and overflow-hidden
           placeholder="Post Title"
         />
       </div>
 
       {/* --- Summary Field --- */}
-      <div className="p-4 flex-1 flex flex-col overflow-y-auto">
+      {/* CHANGED: Removed flex-1, flex-col, and overflow-y-auto to let content grow */}
+      <div className="p-4">
         <label htmlFor="summary" className="block text-sm font-semibold text-gray-600 mb-1">Summary</label>
+        {/* CHANGED: Removed h-full and flex-1. Added resize-none and overflow-hidden */}
         <textarea
           id="summary"
           name="summary"
+          ref={summaryRef}
           value={post.summary}
           onChange={handleInputChange}
-          className="w-full h-full flex-1 border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 resize-none"
+          className="w-full h-auto border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 resize-none overflow-hidden"
           placeholder="Post Summary..."
+          rows="5" // Give it a sensible starting height
         />
+      </div>
+
+      {/* --- Image URL Field --- */}
+      <div className="p-4 border-t">
+        <div className="flex justify-between items-center mb-1">
+          <label htmlFor="imageUrl" className="block text-sm font-semibold text-gray-600">Image URL</label>
+          <button 
+            onClick={handleGoogleSearch}
+            title="Search Google Images for title"
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-indigo-600"
+          >
+            <FiSearch size={14} /> Search
+          </button>
+        </div>
+        <input
+          type="text"
+          id="imageUrl"
+          name="imageUrl"
+          value={post.imageUrl || ''}
+          onChange={handleInputChange}
+          className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-indigo-500"
+          placeholder="Paste image URL here..."
+        />
+        {post.imageUrl && (
+          <div className="mt-3">
+            <img 
+              src={post.imageUrl} 
+              alt="Preview" 
+              className="w-full h-32 object-cover rounded-lg bg-gray-100 border"
+              onError={(e) => { e.target.style.display = 'none'; }}
+              onLoad={(e) => { e.target.style.display = 'block'; }}
+            />
+          </div>
+        )}
       </div>
 
       {/* --- Category Selector --- */}
@@ -52,7 +154,7 @@ function PostEditorCard({ post, setPost, onSave, onSkip, isSaving }) {
               key={cat}
               onClick={() => handleCategorySelect(cat)}
               className={`px-3 py-1 text-sm font-semibold rounded-full border-2
-                ${post.category === cat
+                ${post.topCategory === cat
                   ? 'bg-indigo-600 text-white border-indigo-600'
                   : 'bg-white text-gray-700 border-gray-300 hover:border-gray-500'
                 }`}
@@ -74,7 +176,7 @@ function PostEditorCard({ post, setPost, onSave, onSkip, isSaving }) {
         </button>
         <button
           onClick={onSave}
-          disabled={isSaving || !post.category}
+          disabled={isSaving || !post.topCategory}
           className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-green-300"
         >
           {isSaving ? <FiLoader className="animate-spin" /> : <FiSave />}
@@ -100,7 +202,7 @@ export default function MobileSwiperPage() {
     setIsLoadingList(true);
     setError(null);
     try {
-      // Fetches posts that have category "Uncategorized" or empty
+      // Fetch uncategorized posts
       const res = await fetch(`${API_BASE_URL}/posts?&limit=50&fields=_id`);
       const data = await res.json();
       if (data.status === 'success' && data.posts.length > 0) {
@@ -129,6 +231,7 @@ export default function MobileSwiperPage() {
       const data = await res.json();
       if (data.status === 'success') {
         setCurrentPost({ ...DEFAULT_POST_STATE, ...data.post });
+        console.log('Loaded Post:', data.post);
       } else {
         throw new Error(data.message || 'Failed to load post');
       }
@@ -147,7 +250,6 @@ export default function MobileSwiperPage() {
       setCurrentIndex(nextIndex);
       loadPost(postsToReview[nextIndex]._id);
     } else {
-      // Reached the end, check for more
       toast('End of list. Refetching for more...', { icon: '🔄' });
       fetchPostList();
     }
@@ -200,9 +302,10 @@ export default function MobileSwiperPage() {
 
   // Render logic
   const renderContent = () => {
+    // Show a loading spinner for the whole card area
     if (isLoadingList || (isLoadingPost && !currentPost)) {
       return (
-        <div className="flex flex-col items-center justify-center h-full text-gray-500">
+        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-gray-500">
           <FiLoader className="animate-spin text-4xl" />
           <p className="mt-2 font-semibold">Loading posts...</p>
         </div>
@@ -211,7 +314,7 @@ export default function MobileSwiperPage() {
     
     if (error) {
        return (
-        <div className="flex flex-col items-center justify-center h-full text-red-500">
+        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-red-500">
           <FiX className="text-4xl" />
           <p className="mt-2 font-semibold">Error: {error}</p>
           <button onClick={fetchPostList} className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg">
@@ -223,7 +326,7 @@ export default function MobileSwiperPage() {
 
     if (!currentPost) {
       return (
-        <div className="flex flex-col items-center justify-center h-full text-gray-500">
+        <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-gray-500">
           <FiInbox className="text-6xl" />
           <p className="mt-4 text-xl font-semibold">All done!</p>
           <p className="text-sm">No uncategorized posts found.</p>
@@ -234,7 +337,6 @@ export default function MobileSwiperPage() {
       );
     }
 
-    // Pass `setCurrentPost` to the editor to allow direct state updates
     return <PostEditorCard post={currentPost} setPost={setCurrentPost} onSave={handleSave} onSkip={loadNextPost} isSaving={isSaving} />;
   };
 
@@ -243,8 +345,8 @@ export default function MobileSwiperPage() {
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Post Swiper</h1>
       <p className="text-gray-600 mb-6">Quickly review, edit, and categorize posts.</p>
       
-      {/* Navigation */}
-      <div className="flex justify-between items-center max-w-lg mx-auto mb-2">
+      {/* Navigation - now respects the responsive container width */}
+      <div className="flex justify-between items-center max-w-lg lg:max-w-3xl mx-auto mb-2">
          <button 
            onClick={loadPrevPost}
            disabled={currentIndex === 0 || isLoadingPost || isSaving}
@@ -264,9 +366,12 @@ export default function MobileSwiperPage() {
          </button>
       </div>
       
-      {/* Mobile-like container */}
-      <div className="max-w-lg mx-auto bg-gray-800 p-2 sm:p-4 rounded-2xl shadow-2xl">
-        <div className="bg-gray-100 rounded-lg h-[95vh] min-h-[900px] flex flex-col">
+      {/* Mobile-like container
+          CHANGED: Responsive max-width and removed fixed height
+      */}
+      <div className="max-w-lg lg:max-w-3xl mx-auto bg-gray-800 p-2 sm:p-4 rounded-2xl shadow-2xl">
+        {/* CHANGED: Removed fixed height classes. Added min-h-[75vh] for a good base size */}
+        <div className="bg-gray-100 rounded-lg min-h-[75vh] flex flex-col">
           {renderContent()}
         </div>
       </div>

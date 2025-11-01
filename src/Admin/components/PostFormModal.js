@@ -76,7 +76,8 @@ export default function PostFormModal({
     if (!normalizedPost.media) {
       normalizedPost.media = [];
     }
-    if (!normalizedPost.stackedImages) { // ✅ ADDED
+    if (!normalizedPost.stackedImages) {
+      // ✅ ADDED
       normalizedPost.stackedImages = [];
     }
 
@@ -163,8 +164,11 @@ export default function PostFormModal({
     setFormData((prev) => {
       const newStackedImages = [...(prev.stackedImages || [])];
       // Ensure flex is stored as a number
-      const finalValue = field === 'flex' ? parseInt(value, 10) || 0 : value;
-      newStackedImages[index] = { ...newStackedImages[index], [field]: finalValue };
+      const finalValue = field === "flex" ? parseInt(value, 10) || 0 : value;
+      newStackedImages[index] = {
+        ...newStackedImages[index],
+        [field]: finalValue,
+      };
       return { ...prev, stackedImages: newStackedImages };
     });
   };
@@ -185,7 +189,6 @@ export default function PostFormModal({
       stackedImages: (prev.stackedImages || []).filter((_, i) => i !== index),
     }));
   };
-
 
   // --- UPDATED: handleSubmit logic ---
   const handleSubmit = (e) => {
@@ -294,7 +297,7 @@ export default function PostFormModal({
 
         <div className="p-6 space-y-5 overflow-y-auto">
           {/* ... Other form fields (Title, Summary, Tags, etc.) ... */}
-           <FormInput
+          <FormInput
             label="Title"
             name="title"
             value={formData.title}
@@ -348,7 +351,7 @@ export default function PostFormModal({
               )}
             </div>
           </div>
-          
+
           <FormInput
             label="Featured Image URL"
             name="imageUrl"
@@ -356,7 +359,13 @@ export default function PostFormModal({
             onChange={handleChange}
             placeholder="https://... (from RSS or manual entry)"
           />
-
+          <FormSelect
+            label="Image Fit"
+            name="imageFit"
+            value={formData.imageFit}
+            onChange={handleChange}
+            options={["cover", "contain", "repeat", "stretch"]}
+          />
           <div>
             <label className="block text-sm font-medium mb-1">
               Media Gallery
@@ -408,11 +417,7 @@ export default function PostFormModal({
                       label="objectFit"
                       value={item.objectFit}
                       onChange={(e) =>
-                        handleMediaChange(
-                          index,
-                          "objectFit",
-                          e.target.value
-                        )
+                        handleMediaChange(index, "objectFit", e.target.value)
                       }
                       options={["cover", "contain", "repeat", "stretch"]}
                     />
@@ -428,7 +433,7 @@ export default function PostFormModal({
               </button>
             </div>
           </div>
-          
+
           {/* ✅ ADDED: UI Section for Stacked Images */}
           <div>
             <label className="block text-sm font-medium mb-1">
@@ -480,7 +485,7 @@ export default function PostFormModal({
               </button>
             </div>
           </div>
-          
+
           {/* ... Other form sections (Related Stories, Full Text, etc.) ... */}
           <div>
             <label className="block text-sm font-medium mb-1">
@@ -558,6 +563,13 @@ export default function PostFormModal({
               name="videoUrl"
               value={formData.videoUrl || ""}
               onChange={handleChange}
+            />
+            <FormSelect
+              label="Video Fit"
+              name="videoFit"
+              value={formData.videoFit}
+              onChange={handleChange}
+              options={["COVER", "CONTAIN", "STRETCH"]}
             />
             <FormInput
               label="Source URL"

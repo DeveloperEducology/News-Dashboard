@@ -266,7 +266,7 @@ export default function MobileSwiperPage() {
       
       {/* Mobile-like container */}
       <div className="max-w-lg mx-auto bg-gray-800 p-2 sm:p-4 rounded-2xl shadow-2xl">
-        <div className="bg-gray-100 rounded-lg h-[95vh] min-h-[600px] flex flex-col">
+        <div className="bg-gray-100 rounded-lg h-[95vh] min-h-[900px] flex flex-col">
           {renderContent()}
         </div>
       </div>

@@ -15,6 +15,8 @@ import FetchTweetPage from "./pages/FetchTweetPage";
 import JsonParserPage from "./pages/JsonParserPage";
 import SettingsPage from "./pages/SettingsPage";
 import VideoManagementPage from "./pages/VideoManagementPage";
+import MobileSwiperPage from "./pages/MobileSwiperPage"; // <-- Import the new page
+
 // Constants
 import { API_BASE_URL, DEFAULT_POST_STATE } from "./constants/config";
 import YouTubePostForm from "./pages/YouTubePostForm";
@@ -117,6 +119,8 @@ export default function AdminDashboard() {
         return <YouTubePostForm />;
       case "settings":
         return <SettingsPage />;
+      case "swiper": // <-- Add the new view case
+        return <MobileSwiperPage />;
       case "dashboard":
       default:
         return <DashboardHomePage />;

@@ -36,7 +36,7 @@ export const DEFAULT_POST_STATE = {
   source: "Manual",
   lang: "te",
   sourceType: "manual",
-  imageFit: "",
+  imageFit: "contain",
   videoFit: "COVER",
   categories: [],
   tags: [],

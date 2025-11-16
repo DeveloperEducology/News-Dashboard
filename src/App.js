@@ -14,6 +14,7 @@ import NewsWeb from "./news/NewsWeb";
 import AdminDashboard from "./Admin";
 import SourceColumnsPage from "./news/SourceColumnsPage";
 import Playground from "./news/Playground";
+import FetchTweetForm from "./Admin/FetchTweet";
 
 function App() {
   return (
@@ -21,7 +22,7 @@ function App() {
       <Route path="/" element={<NewsWeb />} />
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/play" element={<Playground />} />
-      
+      <Route path="/f" element={<FetchTweetForm />} />
       <Route path="/news" element={<NewsPage />} />
       <Route path="/news-dashboard" element={<NewDashboard />} />
       <Route path="/embed" element={<EmbedSocialPage />} />

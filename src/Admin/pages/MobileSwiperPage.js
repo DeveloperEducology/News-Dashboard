@@ -62,7 +62,9 @@ function PostEditorCard({ post, setPost, onSave, onSkip, isSaving }) {
       toast.error("Please add a title first to search.");
       return;
     }
-    const encodedTitle = encodeURIComponent(post.title);
+        const encodedTitle = encodeURIComponent(post.url ? post.url : post.title);
+
+    // const encodedTitle = encodeURIComponent(post.title);
     window.open(`https://www.google.com/search?tbm=isch&q=${encodedTitle}`, '_blank', 'noopener,noreferrer');
   };
 

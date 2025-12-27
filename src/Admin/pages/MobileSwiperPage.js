@@ -86,7 +86,7 @@ function PostEditorCard({ post, setPost, onSave, onSkip, isSaving }) {
       toast.error("Please add a title first to search.");
       return;
     }
-    const query = post.url ? post.url : post.title;
+    const query = post.imageSearchSlug ? post.imageSearchSlug : post.title;
     const encodedQuery = encodeURIComponent(query);
     window.open(
       `https://www.google.com/search?tbm=isch&q=${encodedQuery}`,
